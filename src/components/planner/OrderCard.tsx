@@ -119,9 +119,16 @@ export function OrderCard({ order, onOpenActionModal, onOpenDetailsModal }: Orde
             <div className="flex items-start gap-2">
               <Building2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
               <div>
-                <h3 className="font-bold text-slate-900 text-base leading-tight">
-                  {order.account.facilityName}
-                </h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-slate-900 text-base leading-tight">
+                    {order.account.facilityName}
+                  </h3>
+                  {order.account.facilityType && (
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                      {order.account.facilityType}
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs font-medium text-slate-600 mt-0.5">
                   Dept: {order.account.department || 'General Facility'}
                 </p>
@@ -137,7 +144,7 @@ export function OrderCard({ order, onOpenActionModal, onOpenDetailsModal }: Orde
           <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-100 text-xs space-y-1">
             <div className="flex items-center gap-1.5 font-bold text-slate-800">
               <User className="w-3.5 h-3.5 text-slate-400" />
-              <span>{order.account.contactName}</span>
+              <span>Contact: {order.account.contactName}</span>
             </div>
             <div className="flex items-center gap-1.5 text-slate-600">
               <Phone className="w-3.5 h-3.5 text-slate-400" />
@@ -149,6 +156,22 @@ export function OrderCard({ order, onOpenActionModal, onOpenDetailsModal }: Orde
             </div>
           </div>
         </div>
+
+        {/* Resident / Patient Details Banner (if applicable) */}
+        {order.account.residentName && (
+          <div className="bg-emerald-50/80 border border-emerald-200 rounded-xl px-3 py-2 text-xs text-emerald-950 flex flex-wrap items-center justify-between gap-2 shadow-2xs">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span className="font-bold text-slate-800">Resident / Patient:</span>
+              <span className="font-extrabold text-emerald-900">{order.account.residentName}</span>
+            </div>
+            {order.account.residentRoom && (
+              <span className="text-[11px] font-bold text-emerald-800 bg-white px-2.5 py-0.5 rounded-lg border border-emerald-300">
+                Unit / Room: {order.account.residentRoom}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Loading Dock / Building Access Note */}
         {order.account.buildingDockNotes && (

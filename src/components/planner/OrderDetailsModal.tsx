@@ -126,6 +126,18 @@ export function OrderDetailsModal({ order, onClose }: OrderDetailsModalProps) {
                     <strong>Dock / Security Instructions:</strong> {order.account.buildingDockNotes}
                   </p>
                 )}
+                {order.account.residentName && (
+                  <div className="mt-2 p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-950 flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-bold">
+                      Resident / Patient: <strong className="text-emerald-900">{order.account.residentName}</strong>
+                    </span>
+                    {order.account.residentRoom && (
+                      <span className="text-xs font-semibold text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-300">
+                        {order.account.residentRoom}
+                      </span>
+                    )}
+                  </div>
+                )}
                 {order.account.poNumber && (
                   <p className="text-slate-500 mt-1 font-mono text-[11px]">
                     Purchase Order: <strong>{order.account.poNumber}</strong>

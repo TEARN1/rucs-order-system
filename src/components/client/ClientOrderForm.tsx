@@ -342,6 +342,34 @@ export function ClientOrderForm() {
             </span>
           </div>
 
+          {/* Facility Type Selector */}
+          <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              Healthcare Facility / Service Category
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {[
+                { type: 'Hospital', label: '🏥 Hospital / Clinic' },
+                { type: 'Residential Aged Care', label: '🏡 Residential Care / Nursing' },
+                { type: 'Pathology / Lab', label: '🧪 Pathology / Lab' },
+                { type: 'Community Care', label: '🩺 Community / Home Health' },
+              ].map((item) => (
+                <button
+                  key={item.type}
+                  type="button"
+                  onClick={() => setAccount({ ...account, facilityType: item.type as any })}
+                  className={`text-xs px-2.5 py-1.5 rounded-lg font-semibold border transition-all text-left ${
+                    (account.facilityType || 'Hospital') === item.type
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Account Number */}
             <div>
@@ -362,7 +390,7 @@ export function ClientOrderForm() {
             {/* Facility Name */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
-                <span>Facility / Hospital Name</span>
+                <span>Facility / Care Home Name</span>
                 <span className="text-rose-500">*</span>
               </label>
               <input
@@ -378,15 +406,56 @@ export function ClientOrderForm() {
             {/* Department */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Department / Ward / Suite
+                Department / Ward / Wing
               </label>
               <input
                 type="text"
                 value={account.department}
                 onChange={(e) => setAccount({ ...account, department: e.target.value })}
-                placeholder="e.g. Surgical Suite 3, ICU"
+                placeholder="e.g. High-Care Nursing Wing, ICU"
                 className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 text-slate-800"
               />
+            </div>
+          </div>
+
+          {/* Resident / Patient Information (For residential aged care or hospital patients) */}
+          <div className="bg-emerald-50/40 border border-emerald-200/80 rounded-xl p-3.5 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <User className="w-4 h-4 text-emerald-600" />
+                <span>Resident / Patient / Clinician Information</span>
+              </span>
+              <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded-full">
+                Appears on Manifest & Container Label
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">
+                  Resident / Patient Name (or Resident Medical Officer)
+                </label>
+                <input
+                  type="text"
+                  value={account.residentName || ''}
+                  onChange={(e) => setAccount({ ...account, residentName: e.target.value })}
+                  placeholder="e.g. Eleanor Vance (Resident) or Dr. Sarah Jenkins (Resident MO)"
+                  className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 text-slate-800 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">
+                  Resident Room / Bed / Unit #
+                </label>
+                <input
+                  type="text"
+                  value={account.residentRoom || ''}
+                  onChange={(e) => setAccount({ ...account, residentRoom: e.target.value })}
+                  placeholder="e.g. Room 104-B, Bed 2"
+                  className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 text-slate-800"
+                />
+              </div>
             </div>
           </div>
 

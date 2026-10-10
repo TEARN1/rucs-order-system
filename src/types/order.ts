@@ -22,8 +22,11 @@ export type OrderQuantities = Record<ContainerId, number>;
 
 export interface ClientAccountDetails {
   accountNumber: string;
+  facilityType?: 'Hospital' | 'Pathology / Lab' | 'Residential Aged Care' | 'Community Care';
   facilityName: string;
   department: string;
+  residentName?: string; // Resident / Patient Name or Resident Medical Officer
+  residentRoom?: string; // Room / Bed / Wing #
   contactName: string;
   contactPhone: string;
   contactEmail: string;

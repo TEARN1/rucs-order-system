@@ -15,7 +15,6 @@ import {
   Clock, 
   Truck, 
   RefreshCw, 
-  ShieldCheck, 
   Package, 
   FileText 
 } from 'lucide-react';
@@ -28,8 +27,7 @@ interface OrderDetailsModalProps {
 export function OrderDetailsModal({ order, onClose }: OrderDetailsModalProps) {
   if (!order) return null;
 
-  const totalContainers = Object.values(order.items).reduce((a, b) => a + (b || 0), 0);
-  const totalVolume = CONTAINER_PRODUCTS.reduce((acc, p) => acc + (order.items[p.id] || 0) * p.volumeLiters, 0);
+  const totalItemsCount = Object.values(order.items).reduce((a, b) => a + (b || 0), 0);
 
   const handlePrint = () => {
     window.print();
@@ -41,17 +39,17 @@ export function OrderDetailsModal({ order, onClose }: OrderDetailsModalProps) {
         {/* Header */}
         <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-white/10 text-emerald-400 flex items-center justify-center">
               <FileText className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-base">Order Consignment & Audit Docket</h3>
+                <h3 className="font-bold text-base">Consignment & Order Docket</h3>
                 <span className="font-mono text-xs bg-slate-800 text-emerald-400 px-2 py-0.5 rounded border border-slate-700">
                   {order.id}
                 </span>
               </div>
-              <p className="text-xs text-slate-400">RUCS Clinical Waste Logistics Management</p>
+              <p className="text-xs text-slate-400">RUCS Clinical Waste Logistics • Gauteng Fleet</p>
             </div>
           </div>
 
@@ -74,7 +72,7 @@ export function OrderDetailsModal({ order, onClose }: OrderDetailsModalProps) {
           </div>
         </div>
 
-        {/* Scrollable Content */}
+        {/* Content */}
         <div className="p-6 overflow-y-auto space-y-6 text-slate-800 text-sm">
           {/* Status & Timestamp Header Banner */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
@@ -100,15 +98,19 @@ export function OrderDetailsModal({ order, onClose }: OrderDetailsModalProps) {
           <div className="space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
               <Building2 className="w-4 h-4 text-emerald-600" />
-              <span>Client Account & Delivery Location</span>
+              <span>Client Account & Delivery Address</span>
             </h4>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white p-4 rounded-xl border border-slate-200 text-xs">
               <div>
                 <span className="text-slate-400 block">Facility Name</span>
                 <p className="font-bold text-slate-900 text-sm">{order.account.facilityName}</p>
-                <p className="text-slate-600 mt-0.5">Account: <span className="font-mono font-semibold">{order.account.accountNumber}</span></p>
-                <p className="text-slate-500">Dept: {order.account.department || 'N/A'}</p>
+                <p className="text-slate-700 mt-0.5 font-mono font-bold">
+                  Account: {order.account.accountNumber}
+                  {order.account.branchOrStoreCode && ` (Store: ${order.account.branchOrStoreCode})`}
+                </p>
+                <p className="text-slate-500">Region: {order.account.region}</p>
+                {order.account.department && <p className="text-slate-500">Dept: {order.account.department}</p>}
               </div>
 
               <div>
@@ -119,43 +121,26 @@ export function OrderDetailsModal({ order, onClose }: OrderDetailsModalProps) {
               </div>
 
               <div className="sm:col-span-2 pt-2 border-t border-slate-100">
-                <span className="text-slate-400 block">Delivery Address & Access Notes</span>
+                <span className="text-slate-400 block">Delivery Address</span>
                 <p className="font-medium text-slate-800">{order.account.deliveryAddress}</p>
-                {order.account.buildingDockNotes && (
-                  <p className="text-slate-600 mt-1 bg-amber-50/60 p-2 rounded border border-amber-200/50 text-[11px]">
-                    <strong>Dock / Security Instructions:</strong> {order.account.buildingDockNotes}
-                  </p>
-                )}
-                {order.account.residentName && (
-                  <div className="mt-2 p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-950 flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-bold">
-                      Resident / Patient: <strong className="text-emerald-900">{order.account.residentName}</strong>
-                    </span>
-                    {order.account.residentRoom && (
-                      <span className="text-xs font-semibold text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-300">
-                        {order.account.residentRoom}
-                      </span>
-                    )}
-                  </div>
-                )}
                 {order.account.poNumber && (
                   <p className="text-slate-500 mt-1 font-mono text-[11px]">
-                    Purchase Order: <strong>{order.account.poNumber}</strong>
+                    Purchase Order / Ref: <strong>{order.account.poNumber}</strong>
                   </p>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Containers Table */}
+          {/* Items Table */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
                 <Package className="w-4 h-4 text-emerald-600" />
-                <span>Container Manifest (Daniels & Clinical Units)</span>
+                <span>Container & Consumables Manifest</span>
               </h4>
               <span className="text-xs font-bold text-slate-700">
-                Total: {totalContainers} Units ({totalVolume} L)
+                Total: {totalItemsCount} Units
               </span>
             </div>
 
@@ -164,10 +149,9 @@ export function OrderDetailsModal({ order, onClose }: OrderDetailsModalProps) {
                 <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
                   <tr>
                     <th className="py-2.5 px-3">Product Name</th>
-                    <th className="py-2.5 px-3">Classification</th>
-                    <th className="py-2.5 px-3">Unit Volume</th>
+                    <th className="py-2.5 px-3">Category</th>
+                    <th className="py-2.5 px-3">Specification</th>
                     <th className="py-2.5 px-3 text-right">Quantity</th>
-                    <th className="py-2.5 px-3 text-right">Total Liters</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -178,11 +162,8 @@ export function OrderDetailsModal({ order, onClose }: OrderDetailsModalProps) {
                       <tr key={prod.id} className="hover:bg-slate-50">
                         <td className="py-2.5 px-3 font-bold text-slate-800">{prod.name}</td>
                         <td className="py-2.5 px-3 text-slate-600">{prod.category}</td>
-                        <td className="py-2.5 px-3 text-slate-600">{prod.volumeLiters} L</td>
+                        <td className="py-2.5 px-3 text-slate-600">{prod.unitSpec}</td>
                         <td className="py-2.5 px-3 text-right font-bold text-slate-900">{qty}</td>
-                        <td className="py-2.5 px-3 text-right font-medium text-emerald-700">
-                          {qty * prod.volumeLiters} L
-                        </td>
                       </tr>
                     );
                   })}
@@ -195,14 +176,14 @@ export function OrderDetailsModal({ order, onClose }: OrderDetailsModalProps) {
           <div className="space-y-2">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
               <RefreshCw className="w-4 h-4 text-emerald-600" />
-              <span>Full Waste Container Collection Status</span>
+              <span>Full Bins Waste Collection Status</span>
             </h4>
 
             {order.collection.collectionRequested ? (
               <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-xl text-xs space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-amber-900 text-sm">
-                    Collection Requested: {order.collection.fullContainersCount} Full Containers
+                    Collection Scheduled: {order.collection.fullContainersCount} Full Bins
                   </span>
                   <span className="bg-amber-200/70 text-amber-900 px-2.5 py-0.5 rounded-full font-bold text-[11px]">
                     Stream: {order.collection.wasteStream}
@@ -210,17 +191,13 @@ export function OrderDetailsModal({ order, onClose }: OrderDetailsModalProps) {
                 </div>
                 {order.collection.pickupBayNotes && (
                   <p className="text-amber-800 text-[11px]">
-                    <strong>Staging Location:</strong> {order.collection.pickupBayNotes}
+                    <strong>Collection Point:</strong> {order.collection.pickupBayNotes}
                   </p>
                 )}
-                <p className="text-emerald-700 text-[11px] font-semibold flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>Clinical waste safety seal certification verified</span>
-                </p>
               </div>
             ) : (
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-500">
-                Delivery only. No biohazard container collection requested for this booking.
+                Delivery only. No full containers scheduled for collection.
               </div>
             )}
           </div>
@@ -234,8 +211,8 @@ export function OrderDetailsModal({ order, onClose }: OrderDetailsModalProps) {
 
             <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 text-xs space-y-2">
               <div className="flex justify-between py-1 border-b border-slate-200/60">
-                <span className="text-slate-500">Booking Delivery Target:</span>
-                <strong className="text-slate-800">{order.delivery.selectedDate} ({order.delivery.timeSlot})</strong>
+                <span className="text-slate-500">Target Delivery Date:</span>
+                <strong className="text-slate-800">{order.delivery.selectedDate}</strong>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-200/60">
                 <span className="text-slate-500">Order Placed Timestamp:</span>
@@ -245,12 +222,6 @@ export function OrderDetailsModal({ order, onClose }: OrderDetailsModalProps) {
                 <div className="flex justify-between py-1 border-b border-slate-200/60">
                   <span className="text-slate-500">Actioned / Dispatched Timestamp:</span>
                   <span className="font-mono text-slate-700">{new Date(order.timestamps.actionedAt).toUTCString()}</span>
-                </div>
-              )}
-              {order.timestamps.completedAt && (
-                <div className="flex justify-between py-1 border-b border-slate-200/60">
-                  <span className="text-slate-500">Completed / Closed Timestamp:</span>
-                  <span className="font-mono text-slate-700">{new Date(order.timestamps.completedAt).toUTCString()}</span>
                 </div>
               )}
               {order.assignedDriver && (

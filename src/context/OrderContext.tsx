@@ -1,8 +1,8 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
-import { Order, OrderStatus, OrderQuantities, ClientAccountDetails, CollectionDetails, DeliveryBooking } from '@/types/order';
-import { INITIAL_SEED_ORDERS } from '@/lib/constants';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Order, OrderStatus, OrderQuantities, ClientAccountDetails, CollectionDetails, DeliveryBooking, ContainerId } from '@/types/order';
+import { INITIAL_SEED_ORDERS, CONTAINER_PRODUCTS } from '@/lib/constants';
 
 interface ToastMessage {
   id: string;
@@ -17,15 +17,21 @@ interface OrderContextType {
   setActiveRole: (role: 'client' | 'planner') => void;
   plannerTab: OrderStatus;
   setPlannerTab: (tab: OrderStatus) => void;
+  
+  // Client active items settings (customized item catalog)
+  configuredItemIds: ContainerId[];
+  addItemToProfile: (id: ContainerId) => void;
+  removeItemFromProfile: (id: ContainerId) => void;
+  resetConfiguredItems: (ids?: ContainerId[]) => void;
+
   createOrder: (orderData: {
     account: ClientAccountDetails;
     items: OrderQuantities;
     collection: CollectionDetails;
     delivery: DeliveryBooking;
-    priority?: 'standard' | 'urgent' | 'scheduled';
+    priority?: 'standard' | 'urgent';
   }) => Order;
   actionOrder: (orderId: string, driver: string, vehicle: string, notes?: string) => void;
-  markOrderDone: (orderId: string, notes?: string) => void;
   reopenOrder: (orderId: string) => void;
   resetAllData: () => void;
   toasts: ToastMessage[];
@@ -37,12 +43,24 @@ interface OrderContextType {
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'rucs_orders_v1';
+const STORAGE_KEY = 'rucs_orders_v2';
+const ITEMS_STORAGE_KEY = 'rucs_configured_items_v2';
+
+const DEFAULT_ITEM_IDS: ContainerId[] = [
+  'daniels-s14',
+  'daniels-s22',
+  'daniels-s32-plus',
+  'container-45l',
+  'container-90l',
+  'plastic-liners',
+  'cable-ties-20cm',
+];
 
 export function OrderProvider({ children }: { children: React.ReactNode }) {
   const [orders, setOrders] = useState<Order[]>(INITIAL_SEED_ORDERS);
   const [activeRole, setActiveRole] = useState<'client' | 'planner'>('client');
   const [plannerTab, setPlannerTab] = useState<OrderStatus>('inbox');
+  const [configuredItemIds, setConfiguredItemIds] = useState<ContainerId[]>(DEFAULT_ITEM_IDS);
   const [isLoaded, setIsLoaded] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [selectedOrderForModal, setSelectedOrderForModal] = useState<Order | null>(null);
@@ -50,15 +68,25 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
   // Load from localStorage on client mount
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
+      const savedOrders = localStorage.getItem(STORAGE_KEY);
+      if (savedOrders) {
+        const parsed = JSON.parse(savedOrders);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setOrders(parsed);
+          // Filter out legacy 'done' orders if any
+          const validOrders = parsed.filter((o: any) => o.status === 'inbox' || o.status === 'actioned');
+          setOrders(validOrders.length > 0 ? validOrders : INITIAL_SEED_ORDERS);
+        }
+      }
+
+      const savedItems = localStorage.getItem(ITEMS_STORAGE_KEY);
+      if (savedItems) {
+        const parsedItems = JSON.parse(savedItems);
+        if (Array.isArray(parsedItems) && parsedItems.length > 0) {
+          setConfiguredItemIds(parsedItems);
         }
       }
     } catch {
-      // Fallback to initial seeds
+      // Fallback
     } finally {
       setIsLoaded(true);
     }
@@ -69,17 +97,16 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
     if (isLoaded) {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
+        localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(configuredItemIds));
       } catch (err) {
-        console.error('Failed to save orders to localStorage', err);
+        console.error('Failed to save to localStorage', err);
       }
     }
-  }, [orders, isLoaded]);
+  }, [orders, configuredItemIds, isLoaded]);
 
   const addToast = (type: 'success' | 'info' | 'warning', title: string, message: string) => {
     const id = `${Date.now()}-${Math.random()}`;
     setToasts((prev) => [...prev, { id, type, title, message }]);
-
-    // Auto dismiss after 5s
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 5000);
@@ -89,12 +116,31 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
+  const addItemToProfile = (id: ContainerId) => {
+    setConfiguredItemIds((prev) => {
+      if (prev.includes(id)) return prev;
+      return [...prev, id];
+    });
+    const product = CONTAINER_PRODUCTS.find((p) => p.id === id);
+    addToast('info', 'Item Added to Your List', `${product?.name || id} is now on your active order screen.`);
+  };
+
+  const removeItemFromProfile = (id: ContainerId) => {
+    setConfiguredItemIds((prev) => prev.filter((item) => item !== id));
+    const product = CONTAINER_PRODUCTS.find((p) => p.id === id);
+    addToast('info', 'Item Removed', `${product?.name || id} removed from your active order list.`);
+  };
+
+  const resetConfiguredItems = (ids?: ContainerId[]) => {
+    setConfiguredItemIds(ids || DEFAULT_ITEM_IDS);
+  };
+
   const createOrder = (orderData: {
     account: ClientAccountDetails;
     items: OrderQuantities;
     collection: CollectionDetails;
     delivery: DeliveryBooking;
-    priority?: 'standard' | 'urgent' | 'scheduled';
+    priority?: 'standard' | 'urgent';
   }): Order => {
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     const newId = `ORD-2026-${randomSuffix}`;
@@ -118,7 +164,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
     addToast(
       'success',
       'Order Placed Successfully',
-      `Order ${newId} has been submitted and is now waiting in the Planner's Inbox.`
+      `Order ${newId} submitted to Planner Inbox for ${orderData.account.facilityName} (${orderData.account.accountNumber}).`
     );
 
     return newOrder;
@@ -152,32 +198,6 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
-  const markOrderDone = (orderId: string, notes?: string) => {
-    const nowIso = new Date().toISOString();
-    setOrders((prev) =>
-      prev.map((ord) => {
-        if (ord.id === orderId) {
-          return {
-            ...ord,
-            status: 'done',
-            plannerNotes: notes ? `${ord.plannerNotes || ''} | Completion: ${notes}` : ord.plannerNotes,
-            timestamps: {
-              ...ord.timestamps,
-              completedAt: nowIso,
-            },
-          };
-        }
-        return ord;
-      })
-    );
-
-    addToast(
-      'success',
-      'Order Marked as Done',
-      `Order ${orderId} has been completed and archived in the Done tab.`
-    );
-  };
-
   const reopenOrder = (orderId: string) => {
     setOrders((prev) =>
       prev.map((ord) => {
@@ -193,15 +213,17 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
     addToast(
       'warning',
-      'Order Returned to Inbox',
-      `Order ${orderId} has been returned to the Inbox for re-planning.`
+      'Returned to Inbox',
+      `Order ${orderId} returned to Inbox for re-assignment.`
     );
   };
 
   const resetAllData = () => {
     setOrders(INITIAL_SEED_ORDERS);
+    setConfiguredItemIds(DEFAULT_ITEM_IDS);
     localStorage.removeItem(STORAGE_KEY);
-    addToast('info', 'Demo Data Reset', 'The order system has been reset to default realistic seed data.');
+    localStorage.removeItem(ITEMS_STORAGE_KEY);
+    addToast('info', 'Reset Complete', 'System reset to default seed data for Midrand, Pretoria & Kempton Park.');
   };
 
   return (
@@ -212,9 +234,12 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
         setActiveRole,
         plannerTab,
         setPlannerTab,
+        configuredItemIds,
+        addItemToProfile,
+        removeItemFromProfile,
+        resetConfiguredItems,
         createOrder,
         actionOrder,
-        markOrderDone,
         reopenOrder,
         resetAllData,
         toasts,

@@ -15,7 +15,6 @@ export function CollectionSection({ collection, onChange }: CollectionSectionPro
     onChange({
       ...collection,
       collectionRequested: isNowRequested,
-      // Provide smart default values if enabling
       fullContainersCount: isNowRequested ? (collection.fullContainersCount || 5) : 0,
       wasteStream: isNowRequested ? (collection.wasteStream || 'Sharps (Yellow)') : undefined,
       complianceCertified: isNowRequested ? (collection.complianceCertified ?? true) : false,
@@ -45,20 +44,20 @@ export function CollectionSection({ collection, onChange }: CollectionSectionPro
               onClick={toggleCollection}
               className="text-base font-bold text-slate-900 cursor-pointer select-none flex items-center gap-2"
             >
-              <span>Request Collection / Pickup of Full Containers</span>
+              <span>Request Collection / Pickup of Full Bins</span>
               {collection.collectionRequested && (
                 <span className="text-[11px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200">
-                  Collection Active
+                  Collection Scheduled
                 </span>
               )}
             </label>
             <p className="text-xs text-slate-500 mt-0.5">
-              Check this box if your facility requires retrieval or exchange of full biohazard/sharps containers during this delivery run.
+              Specify the number of full sharps containers or clinical waste bins ready for collection during this delivery run.
             </p>
           </div>
         </div>
 
-        <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
+        <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
           <RefreshCw className="w-3.5 h-3.5 text-emerald-600" />
           <span>Simultaneous Exchange</span>
         </div>
@@ -72,14 +71,14 @@ export function CollectionSection({ collection, onChange }: CollectionSectionPro
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
                 <Hash className="w-3.5 h-3.5 text-slate-500" />
-                <span>Estimated Full Containers to Collect</span>
+                <span>Number of Full Bins to Collect</span>
                 <span className="text-rose-500">*</span>
               </label>
               <div className="relative">
                 <input
                   type="number"
                   min={1}
-                  max={200}
+                  max={500}
                   value={collection.fullContainersCount || ''}
                   onChange={(e) =>
                     onChange({
@@ -90,7 +89,7 @@ export function CollectionSection({ collection, onChange }: CollectionSectionPro
                   placeholder="e.g. 10"
                   className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 font-medium"
                 />
-                <span className="absolute right-3 top-2.5 text-xs text-slate-400">units</span>
+                <span className="absolute right-3 top-2.5 text-xs text-slate-400">bins / units</span>
               </div>
             </div>
 
@@ -98,7 +97,7 @@ export function CollectionSection({ collection, onChange }: CollectionSectionPro
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
                 <ShieldAlert className="w-3.5 h-3.5 text-slate-500" />
-                <span>Primary Biohazard Stream</span>
+                <span>Primary Waste Stream</span>
                 <span className="text-rose-500">*</span>
               </label>
               <select
@@ -111,10 +110,10 @@ export function CollectionSection({ collection, onChange }: CollectionSectionPro
                 }
                 className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 font-medium"
               >
-                <option value="Sharps (Yellow)">Sharps (Yellow Lid / Sharpsmart)</option>
+                <option value="Sharps (Yellow)">Sharps (Yellow Lid / Daniels Sharpsmart)</option>
                 <option value="Cytotoxic (Purple)">Cytotoxic & Chemotherapy (Purple Lid)</option>
                 <option value="Anatomical (Red)">Anatomical / Pathological (Red Lid)</option>
-                <option value="Clinical / Infectious (Orange)">Clinical / Infectious (Orange / 45L/90L)</option>
+                <option value="Clinical / Infectious (Orange)">Clinical / Infectious (Orange / 45L / 90L)</option>
               </select>
             </div>
           </div>
@@ -123,7 +122,7 @@ export function CollectionSection({ collection, onChange }: CollectionSectionPro
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5 text-slate-500" />
-              <span>Staging Bay / Holding Room Location</span>
+              <span>Holding Room / Collection Point (Optional)</span>
             </label>
             <input
               type="text"
@@ -134,7 +133,7 @@ export function CollectionSection({ collection, onChange }: CollectionSectionPro
                   pickupBayNotes: e.target.value,
                 })
               }
-              placeholder="e.g. Ground Floor Biohazard Holding Cage B-04, key with dock supervisor"
+              placeholder="e.g. Theatre sluice room, dirty utility cage, clinic counter"
               className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
             />
           </div>
@@ -154,16 +153,16 @@ export function CollectionSection({ collection, onChange }: CollectionSectionPro
               className="mt-0.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
             />
             <label htmlFor="complianceCheck" className="cursor-pointer select-none">
-              <strong className="text-slate-800">Dangerous Goods & Waste Compliance:</strong> I certify that all full sharps and clinical containers are securely locked, sealed, and prepared in accordance with medical waste transport standards.
+              <strong className="text-slate-800">Compliance Certification:</strong> I certify that all full sharps and clinical bins are closed and sealed in accordance with national healthcare waste regulations.
             </label>
           </div>
         </div>
       )}
 
       {!collection.collectionRequested && (
-        <div className="text-xs text-slate-400 bg-slate-50 p-2.5 rounded-lg border border-slate-100 flex items-center gap-2">
+        <div className="text-xs text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-100 flex items-center gap-2">
           <AlertCircle className="w-4 h-4 text-slate-400 shrink-0" />
-          <span>Status: <strong>Delivery Only</strong> (No container pickup requested for this run).</span>
+          <span>Status: <strong>Delivery Only</strong> (No bin collection requested for this run).</span>
         </div>
       )}
     </div>

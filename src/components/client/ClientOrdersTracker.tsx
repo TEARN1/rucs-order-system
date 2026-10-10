@@ -3,7 +3,7 @@
 import React from 'react';
 import { useOrders } from '@/context/OrderContext';
 import { CONTAINER_PRODUCTS } from '@/lib/constants';
-import { Clock, CheckCircle2, AlertCircle, ArrowUpRight, Box, RefreshCw } from 'lucide-react';
+import { Clock, CheckCircle2, AlertCircle, ArrowUpRight, Box, RefreshCw, Truck, Building2 } from 'lucide-react';
 
 export function ClientOrdersTracker() {
   const { orders, setSelectedOrderForModal } = useOrders();
@@ -11,7 +11,7 @@ export function ClientOrdersTracker() {
   if (orders.length === 0) {
     return (
       <div className="text-center py-8 bg-white rounded-xl border border-slate-200 p-6 text-slate-500 text-sm">
-        No orders found in system yet.
+        No orders found in the system yet.
       </div>
     );
   }
@@ -20,13 +20,13 @@ export function ClientOrdersTracker() {
     <div className="max-w-6xl mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-slate-900">Recent Facility Orders</h2>
+          <h2 className="text-lg font-bold text-slate-900">Registered Facility Orders</h2>
           <p className="text-xs text-slate-500">
-            Real-time status tracking for orders placed across all hospital wards.
+            Real-time status tracking for orders across Midrand, Pretoria, and Kempton Park facilities.
           </p>
         </div>
         <span className="text-xs font-semibold px-2.5 py-1 bg-slate-100 text-slate-700 rounded-lg">
-          {orders.length} Total Registered Orders
+          {orders.length} Active Orders
         </span>
       </div>
 
@@ -39,12 +39,9 @@ export function ClientOrdersTracker() {
           if (order.status === 'inbox') {
             statusBadgeClass = 'bg-amber-100 text-amber-800 border-amber-200';
             statusText = 'Inbox (Pending Dispatch)';
-          } else if (order.status === 'actioned') {
-            statusBadgeClass = 'bg-indigo-100 text-indigo-800 border-indigo-200';
-            statusText = 'Actioned (In Transit / Scheduled)';
           } else {
-            statusBadgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-200';
-            statusText = 'Done (Delivered)';
+            statusBadgeClass = 'bg-indigo-100 text-indigo-800 border-indigo-200';
+            statusText = 'Actioned (Dispatched / In Route)';
           }
 
           return (
@@ -63,28 +60,34 @@ export function ClientOrdersTracker() {
                   </span>
                 </div>
 
-                <h3 className="font-bold text-slate-800 text-sm">{order.account.facilityName}</h3>
-                <p className="text-xs text-slate-500 truncate">{order.account.department}</p>
+                <div className="flex items-center gap-1.5">
+                  <h3 className="font-bold text-slate-800 text-sm leading-tight">{order.account.facilityName}</h3>
+                  <span className="text-[10px] text-slate-500 font-mono">({order.account.accountNumber})</span>
+                </div>
+                <p className="text-xs text-slate-500 truncate mt-0.5">{order.account.deliveryAddress}</p>
               </div>
 
               {/* Items summary */}
               <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 text-xs">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-slate-500">Containers:</span>
+                  <span className="text-slate-500">Scheduled Items:</span>
                   <strong className="text-slate-800 font-bold">{totalUnits} units</strong>
                 </div>
 
                 {order.collection.collectionRequested && (
-                  <div className="flex items-center justify-between text-[11px] text-amber-700 font-semibold pt-1 border-t border-slate-200/60">
-                    <span>🔄 Full Collection:</span>
-                    <span>{order.collection.fullContainersCount} units</span>
+                  <div className="flex items-center justify-between text-[11px] text-amber-800 font-semibold pt-1 border-t border-slate-200/60">
+                    <span className="flex items-center gap-1">
+                      <RefreshCw className="w-3 h-3 text-amber-600" />
+                      <span>Full Bin Collection:</span>
+                    </span>
+                    <span>{order.collection.fullContainersCount} bins</span>
                   </div>
                 )}
               </div>
 
               {/* Delivery date & creation time */}
               <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                <span>Delivery: <strong>{order.delivery.selectedDate}</strong></span>
+                <span>Target Delivery: <strong>{order.delivery.selectedDate}</strong></span>
                 <span className="text-slate-400">
                   {new Date(order.timestamps.createdAt).toLocaleDateString()}
                 </span>

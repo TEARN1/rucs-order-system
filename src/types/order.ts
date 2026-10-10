@@ -1,37 +1,39 @@
 export type ContainerId =
   | 'daniels-s14'
   | 'daniels-s22'
-  | 'daniels-a32-plus'
+  | 'daniels-s32-plus'
   | 'container-45l'
-  | 'container-90l';
+  | 'container-90l'
+  | 'plastic-liners'
+  | 'cable-ties-20cm';
 
 export interface ContainerProduct {
   id: ContainerId;
   name: string;
   code: string;
-  category: 'Sharpsmart' | 'Access Plus' | 'Clinical Waste Containers';
-  volumeLiters: number;
+  category: 'Sharpsmart' | 'Clinical Waste Containers' | 'Consumables & Accessories';
+  volumeLiters?: number;
+  unitSpec: string;
   description: string;
-  usage: string;
   colorHex: string;
   badge: string;
-  imageUrl?: string;
 }
 
-export type OrderQuantities = Record<ContainerId, number>;
+export type OrderQuantities = Partial<Record<ContainerId, number>>;
+
+export type ClientType = 'hospital' | 'dischem' | 'sanbs' | 'other';
 
 export interface ClientAccountDetails {
-  accountNumber: string;
-  facilityType?: 'Hospital' | 'Pathology / Lab' | 'Residential Aged Care' | 'Community Care';
-  facilityName: string;
-  department: string;
-  residentName?: string; // Resident / Patient Name or Resident Medical Officer
-  residentRoom?: string; // Room / Bed / Wing #
+  accountNumber: string; // e.g., ARW001, CAR001, WAT001, DIS001, NBTS-12
+  clientType: ClientType;
+  facilityName: string; // e.g., Arwyp Medical Centre, Netcare Waterfall City, Dis-Chem
+  branchOrStoreCode?: string; // e.g., S204, S810, A01, NBTS 12
+  region: 'Midrand' | 'Pretoria' | 'Kempton Park';
+  department?: string;
   contactName: string;
   contactPhone: string;
   contactEmail: string;
   deliveryAddress: string;
-  buildingDockNotes: string;
   poNumber?: string;
 }
 
@@ -45,16 +47,14 @@ export interface CollectionDetails {
 
 export interface DeliveryBooking {
   selectedDate: string; // YYYY-MM-DD
-  timeSlot: 'Morning (08:00 - 12:00)' | 'Afternoon (12:00 - 17:00)' | 'Express Priority';
   specialDeliveryInstructions?: string;
 }
 
-export type OrderStatus = 'inbox' | 'actioned' | 'done';
+export type OrderStatus = 'inbox' | 'actioned';
 
 export interface OrderTimestamps {
   createdAt: string; // ISO string
   actionedAt?: string; // ISO string
-  completedAt?: string; // ISO string
 }
 
 export interface Order {
@@ -65,9 +65,8 @@ export interface Order {
   collection: CollectionDetails;
   delivery: DeliveryBooking;
   timestamps: OrderTimestamps;
-  priority: 'standard' | 'urgent' | 'scheduled';
+  priority: 'standard' | 'urgent';
   assignedDriver?: string;
   assignedVehicle?: string;
   plannerNotes?: string;
-  internalRef?: string;
 }

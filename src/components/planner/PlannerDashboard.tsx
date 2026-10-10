@@ -10,16 +10,15 @@ import { CONTAINER_PRODUCTS, SAMPLE_CLIENT_ACCOUNTS } from '@/lib/constants';
 import { 
   Inbox, 
   Clock, 
-  CheckCircle2, 
   Search, 
   Filter, 
-  PlusCircle, 
   Sparkles, 
   Download, 
   Package, 
   RefreshCw, 
   Truck,
-  RotateCcw
+  Building2,
+  CheckCircle2
 } from 'lucide-react';
 
 export function PlannerDashboard() {
@@ -34,19 +33,19 @@ export function PlannerDashboard() {
   } = useOrders();
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [regionFilter, setRegionFilter] = useState<'all' | 'Midrand' | 'Pretoria' | 'Kempton Park'>('all');
   const [collectionFilter, setCollectionFilter] = useState<'all' | 'collection-only' | 'delivery-only'>('all');
   const [sortBy, setSortBy] = useState<'created-desc' | 'delivery-asc' | 'priority'>('created-desc');
   
   // Action Modal state
   const [orderToAction, setOrderToAction] = useState<Order | null>(null);
 
-  // Tab counts
+  // Tab counts: Only Inbox and Actioned! (Done tab removed as requested)
   const inboxOrders = useMemo(() => orders.filter((o) => o.status === 'inbox'), [orders]);
   const actionedOrders = useMemo(() => orders.filter((o) => o.status === 'actioned'), [orders]);
-  const doneOrders = useMemo(() => orders.filter((o) => o.status === 'done'), [orders]);
 
-  // Total containers in schedule
-  const totalScheduledContainers = useMemo(() => {
+  // Total containers in rotation
+  const totalContainers = useMemo(() => {
     return orders.reduce((sum, ord) => {
       return sum + Object.values(ord.items).reduce((a, b) => a + (b || 0), 0);
     }, 0);
@@ -65,17 +64,23 @@ export function PlannerDashboard() {
 
     return listForTab
       .filter((order) => {
-        // Search filter
+        // Search query
         if (searchQuery.trim()) {
           const q = searchQuery.toLowerCase();
           const matchId = order.id.toLowerCase().includes(q);
           const matchAccount = order.account.accountNumber.toLowerCase().includes(q);
           const matchFacility = order.account.facilityName.toLowerCase().includes(q);
+          const matchBranch = (order.account.branchOrStoreCode || '').toLowerCase().includes(q);
+          const matchAddress = order.account.deliveryAddress.toLowerCase().includes(q);
           const matchContact = order.account.contactName.toLowerCase().includes(q);
-          const matchDept = order.account.department.toLowerCase().includes(q);
-          if (!matchId && !matchAccount && !matchFacility && !matchContact && !matchDept) {
+          if (!matchId && !matchAccount && !matchFacility && !matchBranch && !matchAddress && !matchContact) {
             return false;
           }
+        }
+
+        // Region filter (Midrand, Pretoria, Kempton Park)
+        if (regionFilter !== 'all' && order.account.region !== regionFilter) {
+          return false;
         }
 
         // Collection filter
@@ -102,9 +107,9 @@ export function PlannerDashboard() {
         }
         return 0;
       });
-  }, [orders, plannerTab, searchQuery, collectionFilter, sortBy]);
+  }, [orders, plannerTab, searchQuery, regionFilter, collectionFilter, sortBy]);
 
-  // Simulate an incoming client order for testing reactivity
+  // Simulate incoming order for Midrand, Pretoria, Kempton Park, Dis-Chem, or SANBS
   const handleSimulateIncomingOrder = () => {
     const sample = SAMPLE_CLIENT_ACCOUNTS[Math.floor(Math.random() * SAMPLE_CLIENT_ACCOUNTS.length)];
     createOrder({
@@ -112,20 +117,21 @@ export function PlannerDashboard() {
       items: {
         'daniels-s14': Math.floor(Math.random() * 8) + 2,
         'daniels-s22': Math.floor(Math.random() * 6) + 1,
-        'daniels-a32-plus': Math.floor(Math.random() * 4) + 1,
+        'daniels-s32-plus': Math.floor(Math.random() * 4) + 1,
         'container-45l': Math.floor(Math.random() * 6),
-        'container-90l': Math.floor(Math.random() * 2),
+        'container-90l': Math.floor(Math.random() * 3),
+        'plastic-liners': 3,
+        'cable-ties-20cm': 2,
       },
       collection: {
-        collectionRequested: Math.random() > 0.3,
-        fullContainersCount: Math.floor(Math.random() * 12) + 4,
+        collectionRequested: true,
+        fullContainersCount: Math.floor(Math.random() * 14) + 4,
         wasteStream: 'Sharps (Yellow)',
-        pickupBayNotes: 'Staged at main clean-to-dirty exchange room.',
+        pickupBayNotes: 'Staged at sluice room / receiving dock',
         complianceCertified: true,
       },
       delivery: {
-        selectedDate: '2026-10-15',
-        timeSlot: 'Morning (08:00 - 12:00)',
+        selectedDate: '2026-10-14',
         specialDeliveryInstructions: 'Generated via test simulation.',
       },
       priority: Math.random() > 0.6 ? 'urgent' : 'standard',
@@ -133,20 +139,21 @@ export function PlannerDashboard() {
     setPlannerTab('inbox');
   };
 
-  // Export CSV
   const handleExportCSV = () => {
-    const headers = ['Order ID', 'Status', 'Account No', 'Facility', 'Department', 'Delivery Date', 'Total Units', 'Collection Units', 'Created At'];
+    const headers = ['Order ID', 'Status', 'Account No', 'Branch / Store Code', 'Facility Name', 'Region', 'Delivery Address', 'Target Date', 'Items Count', 'Full Bins Collection', 'Created At'];
     const rows = orders.map((o) => {
-      const units = Object.values(o.items).reduce((a, b) => a + (b || 0), 0);
+      const itemsCount = Object.values(o.items).reduce((a, b) => a + (b || 0), 0);
       const colUnits = o.collection.collectionRequested ? o.collection.fullContainersCount || 0 : 0;
       return [
         o.id,
         o.status,
         o.account.accountNumber,
+        `"${o.account.branchOrStoreCode || ''}"`,
         `"${o.account.facilityName}"`,
-        `"${o.account.department}"`,
+        `"${o.account.region}"`,
+        `"${o.account.deliveryAddress}"`,
         o.delivery.selectedDate,
-        units,
+        itemsCount,
         colUnits,
         `"${o.timestamps.createdAt}"`,
       ].join(',');
@@ -168,15 +175,15 @@ export function PlannerDashboard() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
               Planner Operations Dashboard
             </h1>
-            <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200">
-              Logistics Dispatch Hub
+            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+              Gauteng Fleet Hub
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Real-time queue triage: Daniels Sharpsmart container replenishment & hazardous waste collection.
+            Dispatch triage for Midrand, Pretoria, and Kempton Park: Hospitals, Dis-Chem branches, and SANBS blood banks.
           </p>
         </div>
 
@@ -197,7 +204,7 @@ export function PlannerDashboard() {
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-all shadow-2xs"
           >
             <Download className="w-3.5 h-3.5 text-slate-500" />
-            <span className="hidden sm:inline">Export CSV</span>
+            <span className="hidden sm:inline">Export Manifest</span>
           </button>
         </div>
       </div>
@@ -214,14 +221,14 @@ export function PlannerDashboard() {
           }`}
         >
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Inbox (Unassigned)</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Inbox</span>
             <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center">
               <Inbox className="w-4 h-4" />
             </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black text-slate-900">{inboxOrders.length}</span>
-            <span className="text-xs text-amber-700 font-semibold">Requires Action</span>
+            <span className="text-2xl font-bold text-slate-900">{inboxOrders.length}</span>
+            <span className="text-xs text-amber-700 font-semibold">Awaiting Dispatch</span>
           </div>
         </div>
 
@@ -235,54 +242,47 @@ export function PlannerDashboard() {
           }`}
         >
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Actioned / Routes</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Actioned</span>
             <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center">
               <Truck className="w-4 h-4" />
             </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black text-slate-900">{actionedOrders.length}</span>
-            <span className="text-xs text-indigo-700 font-semibold">In Transit / Scheduled</span>
+            <span className="text-2xl font-bold text-slate-900">{actionedOrders.length}</span>
+            <span className="text-xs text-indigo-700 font-semibold">Dispatched / In Route</span>
           </div>
         </div>
 
-        {/* Done KPI */}
-        <div 
-          onClick={() => setPlannerTab('done')}
-          className={`p-4 rounded-2xl border transition-all cursor-pointer ${
-            plannerTab === 'done'
-              ? 'bg-emerald-50/60 border-emerald-300 shadow-sm ring-1 ring-emerald-300'
-              : 'bg-white border-slate-200 hover:border-slate-300'
-          }`}
-        >
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Done (Completed)</span>
-            <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
-              <CheckCircle2 className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black text-slate-900">{doneOrders.length}</span>
-            <span className="text-xs text-emerald-700 font-semibold">Verified Closed</span>
-          </div>
-        </div>
-
-        {/* Total Volumes KPI */}
+        {/* Total Units KPI */}
         <div className="p-4 rounded-2xl border border-slate-200 bg-white">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Rotation Units</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Scheduled Items</span>
             <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center">
               <Package className="w-4 h-4" />
             </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black text-slate-900">{totalScheduledContainers}</span>
-            <span className="text-xs text-slate-500 font-medium">({totalCollections} collections)</span>
+            <span className="text-2xl font-bold text-slate-900">{totalContainers}</span>
+            <span className="text-xs text-slate-500 font-medium">units</span>
+          </div>
+        </div>
+
+        {/* Total Bins Collection KPI */}
+        <div className="p-4 rounded-2xl border border-slate-200 bg-white">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Bins to Collect</span>
+            <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center">
+              <RefreshCw className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-amber-900">{totalCollections}</span>
+            <span className="text-xs text-slate-500 font-medium">full bins</span>
           </div>
         </div>
       </div>
 
-      {/* Main Tabs Navigation (Inbox, Actioned, Done) */}
+      {/* Main Tabs Navigation: Strictly Inbox and Actioned (Done is removed!) */}
       <div className="border-b border-slate-200">
         <nav className="flex space-x-8" aria-label="Planner Tabs">
           <button
@@ -296,7 +296,7 @@ export function PlannerDashboard() {
           >
             <Inbox className="w-4 h-4" />
             <span>Inbox</span>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-extrabold ${
+            <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
               plannerTab === 'inbox'
                 ? 'bg-amber-100 text-amber-800'
                 : 'bg-slate-100 text-slate-600'
@@ -314,9 +314,9 @@ export function PlannerDashboard() {
                 : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
             }`}
           >
-            <Clock className="w-4 h-4" />
+            <Truck className="w-4 h-4" />
             <span>Actioned</span>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-extrabold ${
+            <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
               plannerTab === 'actioned'
                 ? 'bg-indigo-100 text-indigo-800'
                 : 'bg-slate-100 text-slate-600'
@@ -324,46 +324,41 @@ export function PlannerDashboard() {
               {actionedOrders.length}
             </span>
           </button>
-
-          <button
-            type="button"
-            onClick={() => setPlannerTab('done')}
-            className={`py-3 px-1 border-b-2 font-bold text-sm flex items-center gap-2 transition-all ${
-              plannerTab === 'done'
-                ? 'border-emerald-600 text-emerald-700'
-                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-            }`}
-          >
-            <CheckCircle2 className="w-4 h-4" />
-            <span>Done</span>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-extrabold ${
-              plannerTab === 'done'
-                ? 'bg-emerald-100 text-emerald-800'
-                : 'bg-slate-100 text-slate-600'
-            }`}>
-              {doneOrders.length}
-            </span>
-          </button>
         </nav>
       </div>
 
-      {/* Filter, Search, and Sort Toolbar */}
-      <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-        {/* Search Input */}
-        <div className="relative w-full sm:w-80">
+      {/* Filters and Search Toolbar */}
+      <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs flex flex-col lg:flex-row items-center justify-between gap-3 text-xs">
+        {/* Search */}
+        <div className="relative w-full lg:w-80">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search facility, account #, order ID..."
+            placeholder="Search hospital, ARW001, S204, NBTS, address..."
             className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 text-xs"
           />
         </div>
 
-        {/* Filters & Sorting */}
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
-          {/* Collection Status Filter */}
+        {/* Region, Collection, and Sort Filters */}
+        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-end">
+          {/* Region filter */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-500 font-medium">Region:</span>
+            <select
+              value={regionFilter}
+              onChange={(e) => setRegionFilter(e.target.value as any)}
+              className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none font-medium"
+            >
+              <option value="all">All Regions</option>
+              <option value="Midrand">Midrand</option>
+              <option value="Pretoria">Pretoria</option>
+              <option value="Kempton Park">Kempton Park</option>
+            </select>
+          </div>
+
+          {/* Collection Filter */}
           <div className="flex items-center gap-1.5">
             <span className="text-slate-500 font-medium">Filter:</span>
             <select
@@ -372,8 +367,8 @@ export function PlannerDashboard() {
               className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none font-medium"
             >
               <option value="all">All Orders</option>
-              <option value="collection-only">🔄 Collection Required</option>
-              <option value="delivery-only">📦 Delivery Only</option>
+              <option value="collection-only">Collection Required</option>
+              <option value="delivery-only">Delivery Only</option>
             </select>
           </div>
 
@@ -404,18 +399,16 @@ export function PlannerDashboard() {
           </h3>
           <p className="text-xs text-slate-500 max-w-sm mx-auto">
             {searchQuery
-              ? `No matching results found for "${searchQuery}". Try clearing filters.`
+              ? `No matching results found for "${searchQuery}".`
               : plannerTab === 'inbox'
-              ? 'All new incoming orders have been actioned. Good job!'
-              : plannerTab === 'actioned'
-              ? 'No active orders currently dispatched.'
-              : 'No orders have been marked as completed yet.'}
+              ? 'All new incoming hospital orders have been actioned.'
+              : 'No orders are currently in active dispatch.'}
           </p>
           {plannerTab === 'inbox' && (
             <button
               type="button"
               onClick={handleSimulateIncomingOrder}
-              className="mt-2 text-xs font-bold text-emerald-700 bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-200 hover:bg-emerald-100 transition-colors"
+              className="mt-2 text-xs font-bold text-emerald-800 bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-200 hover:bg-emerald-100 transition-colors"
             >
               Simulate an incoming order now
             </button>

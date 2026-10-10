@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useOrders } from '@/context/OrderContext';
 import { ProductSelector } from './ProductSelector';
 import { CollectionSection } from './CollectionSection';
 import { BookingCalendar } from './BookingCalendar';
-import { ClientAccountDetails, CollectionDetails, DeliveryBooking, OrderQuantities, Order, ClientType } from '@/types/order';
-import { SAMPLE_CLIENT_ACCOUNTS, CONTAINER_PRODUCTS } from '@/lib/constants';
+import { ClientAccountDetails, CollectionDetails, DeliveryBooking, OrderQuantities, Order } from '@/types/order';
+import { CONTAINER_PRODUCTS } from '@/lib/constants';
 import confetti from 'canvas-confetti';
 import { 
   Building2, 
@@ -23,26 +23,23 @@ import {
   ShieldCheck,
   Send,
   SlidersHorizontal,
-  PlusCircle,
-  MapPinned
+  Edit3
 } from 'lucide-react';
 
-export function ClientOrderForm() {
-  const { createOrder, setActiveRole, setPlannerTab } = useOrders();
+interface ClientOrderFormProps {
+  onOpenSettings?: () => void;
+}
 
-  // Initial account state: Arwyp Medical Centre (Kempton Park) -> ARW001
-  const [account, setAccount] = useState<ClientAccountDetails>({
-    accountNumber: 'ARW001',
-    clientType: 'hospital',
-    facilityName: 'Arwyp Medical Centre',
-    region: 'Kempton Park',
-    department: 'Theatres & Trauma Unit',
-    contactName: 'Sister Annatjie van der Merwe',
-    contactPhone: '+27 (011) 922-1000',
-    contactEmail: 'orders@arwyp.com',
-    deliveryAddress: '20 Pine Avenue, Kempton Park, 1619',
-    poNumber: 'PO-ARW-8921',
-  });
+export function ClientOrderForm({ onOpenSettings }: ClientOrderFormProps) {
+  const { createOrder, setActiveRole, setPlannerTab, clientProfile } = useOrders();
+
+  // Load account from persistent profile
+  const [account, setAccount] = useState<ClientAccountDetails>({ ...clientProfile });
+
+  // Update account if persistent profile changes
+  useEffect(() => {
+    setAccount({ ...clientProfile });
+  }, [clientProfile]);
 
   // Quantities state
   const [quantities, setQuantities] = useState<OrderQuantities>({
@@ -60,7 +57,7 @@ export function ClientOrderForm() {
     collectionRequested: true,
     fullContainersCount: 12,
     wasteStream: 'Sharps (Yellow)',
-    pickupBayNotes: 'Theatre sluice room holding bay',
+    pickupBayNotes: 'Theatre dirty utility / sluice holding bay',
     complianceCertified: true,
   });
 
@@ -75,36 +72,14 @@ export function ClientOrderForm() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Quick fill sample account
-  const handleSelectSampleAccount = (sample: ClientAccountDetails) => {
-    setAccount({ ...sample });
-  };
-
-  // Helper when changing hospital name manually to auto-derive 3 first letters + 001
-  const handleFacilityNameChange = (newName: string) => {
-    let derivedAcc = account.accountNumber;
-    if (account.clientType === 'hospital') {
-      const cleanLetters = newName.replace(/[^a-zA-Z]/g, '').toUpperCase();
-      if (cleanLetters.length >= 3) {
-        derivedAcc = cleanLetters.slice(0, 3) + '001';
-      }
-    }
-    setAccount({
-      ...account,
-      facilityName: newName,
-      accountNumber: derivedAcc,
-    });
-  };
-
   const totalItemsCount = Object.values(quantities).reduce((a, b) => a + (b || 0), 0);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
-    // Validation
     if (!account.accountNumber.trim()) {
-      setErrorMessage('Account Number is required.');
+      setErrorMessage('Account Number is required. Please check your profile settings.');
       return;
     }
     if (!account.facilityName.trim()) {
@@ -174,7 +149,7 @@ export function ClientOrderForm() {
     });
   };
 
-  // If order was submitted, show clean receipt card (no emojis, pure icons)
+  // If order was submitted, show clean receipt card
   if (submittedOrder) {
     return (
       <div className="max-w-3xl mx-auto py-8 px-4 sm:px-6">
@@ -193,7 +168,6 @@ export function ClientOrderForm() {
           </div>
 
           <div className="p-6 sm:p-8 space-y-6">
-            {/* Quick summary grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
                 <span className="text-slate-400 font-semibold block uppercase tracking-wider text-[10px]">
@@ -214,11 +188,10 @@ export function ClientOrderForm() {
                 </span>
                 <p className="font-bold text-slate-900 text-sm">{submittedOrder.delivery.selectedDate}</p>
                 <p className="text-emerald-700 font-semibold">48-Hour Minimum Lead Time Verified</p>
-                <p className="text-slate-500">Continuous Shift Delivery</p>
+                <p className="text-slate-500">Continuous Shift Delivery Run</p>
               </div>
             </div>
 
-            {/* Container Breakdown */}
             <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
               <div className="flex items-center justify-between mb-2">
                 <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
@@ -244,7 +217,7 @@ export function ClientOrderForm() {
               {submittedOrder.collection.collectionRequested && (
                 <div className="mt-3 pt-3 border-t border-slate-200/80 flex items-center justify-between text-xs text-amber-800 bg-amber-50/80 p-2.5 rounded-lg border border-amber-200">
                   <span className="font-semibold">
-                    Collection Requested: {submittedOrder.collection.fullContainersCount} Full Bins
+                    Collection Scheduled: {submittedOrder.collection.fullContainersCount} Full Bins
                   </span>
                   <span className="text-[11px] font-medium text-amber-900">
                     {submittedOrder.collection.wasteStream}
@@ -253,7 +226,6 @@ export function ClientOrderForm() {
               )}
             </div>
 
-            {/* Timestamps */}
             <div className="text-[11px] text-slate-500 bg-slate-100/70 p-3 rounded-lg flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-slate-400" />
@@ -264,7 +236,6 @@ export function ClientOrderForm() {
               </span>
             </div>
 
-            {/* Navigation Actions */}
             <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
               <button
                 type="button"
@@ -291,47 +262,41 @@ export function ClientOrderForm() {
 
   return (
     <div className="max-w-6xl mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6">
-      {/* Header Banner (No emojis, clean corporate medical logistics) */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-teal-950 rounded-2xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
-        <div className="relative z-10 max-w-3xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-emerald-300 text-xs font-semibold mb-3">
-            <Building2 className="w-3.5 h-3.5 text-emerald-300" />
-            <span>Healthcare Client Order Portal • Gauteng Fleet</span>
+      {/* Active Facility Profile Card (Pre-loaded from Settings) */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
+            <Building2 className="w-5 h-5" />
           </div>
-
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-            Order Placement & Waste Collection
-          </h1>
-
-          <p className="text-slate-300 text-xs sm:text-sm mt-1.5 leading-relaxed">
-            Order clean Daniels Sharpsmart containers (S14, S22, S32 Plus), 45 L & 90 L containers, yellow plastic liners, and 20cm security ties for hospitals and clinics in Midrand, Pretoria, and Kempton Park.
-          </p>
-
-          {/* Quick Pre-Fill Facility Selector */}
-          <div className="mt-4 pt-4 border-t border-slate-700/80 space-y-2">
-            <span className="text-xs text-slate-300 font-medium block">
-              Quick Pre-Fill Sample Facility (Midrand, Pretoria, Kempton Park):
-            </span>
-            <div className="flex flex-wrap gap-2">
-              {SAMPLE_CLIENT_ACCOUNTS.map((sample) => (
-                <button
-                  key={`${sample.accountNumber}-${sample.branchOrStoreCode || sample.facilityName}`}
-                  type="button"
-                  onClick={() => handleSelectSampleAccount(sample)}
-                  className={`text-xs px-2.5 py-1.5 rounded-lg border transition-all font-medium flex items-center gap-1.5 ${
-                    account.accountNumber === sample.accountNumber && account.branchOrStoreCode === sample.branchOrStoreCode
-                      ? 'bg-emerald-600 text-white border-emerald-500 font-bold'
-                      : 'bg-white/10 hover:bg-white/20 text-white border-white/20'
-                  }`}
-                >
-                  <span className="font-mono font-bold text-emerald-300">{sample.accountNumber}</span>
-                  {sample.branchOrStoreCode && <span className="text-[10px] text-slate-300">({sample.branchOrStoreCode})</span>}
-                  <span>- {sample.facilityName.split(' ')[0]} ({sample.region})</span>
-                </button>
-              ))}
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-slate-900 leading-tight">
+                {account.facilityName}
+              </h2>
+              <span className="font-mono text-xs font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200">
+                {account.accountNumber}
+                {account.branchOrStoreCode && ` (${account.branchOrStoreCode})`}
+              </span>
+              <span className="text-[11px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                {account.region}
+              </span>
             </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {account.deliveryAddress} • Contact: {account.contactName} ({account.contactPhone})
+            </p>
           </div>
         </div>
+
+        {onOpenSettings && (
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-200 transition-colors self-start sm:self-auto"
+          >
+            <Edit3 className="w-3.5 h-3.5" />
+            <span>Edit Profile / Switch Facility</span>
+          </button>
+        )}
       </div>
 
       {errorMessage && (
@@ -343,217 +308,19 @@ export function ClientOrderForm() {
 
       {/* Main Order Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Step 1: Account Details */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
-          <div className="pb-3 border-b border-slate-100 flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-emerald-600" />
-                <span>Account & Facility Details</span>
-              </h3>
-              <p className="text-xs text-slate-500">
-                Hospital/Client identification in Midrand, Pretoria, or Kempton Park.
-              </p>
-            </div>
-            <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">
-              Account Step
-            </span>
+        {/* Step 1: Purchase Order Number (Optional) */}
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2">
+            <FileText className="w-4 h-4 text-slate-400" />
+            <span className="font-semibold text-slate-700">Internal Reference / Purchase Order (Optional):</span>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Client Type */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Client Organization Type
-              </label>
-              <select
-                value={account.clientType}
-                onChange={(e) => {
-                  const newType = e.target.value as ClientType;
-                  setAccount({
-                    ...account,
-                    clientType: newType,
-                    accountNumber: newType === 'hospital' ? 'ARW001' : newType === 'dischem' ? 'DIS001' : 'NBTS 12',
-                    branchOrStoreCode: newType === 'dischem' ? 'S204' : newType === 'sanbs' ? 'NBTS 12' : undefined,
-                  });
-                }}
-                className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 font-medium text-slate-800"
-              >
-                <option value="hospital">Hospital (Midrand / Pretoria / Kempton Park)</option>
-                <option value="dischem">Dis-Chem Pharmacy & Clinic (S & A Store Codes)</option>
-                <option value="sanbs">SANBS (South African National Blood Service)</option>
-                <option value="other">Other Medical Facility</option>
-              </select>
-            </div>
-
-            {/* Facility Name */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
-                <span>Facility Name</span>
-                <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={account.facilityName}
-                onChange={(e) => handleFacilityNameChange(e.target.value)}
-                placeholder="e.g. Arwyp Medical Centre"
-                className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 font-medium text-slate-800"
-              />
-            </div>
-
-            {/* Account Number (Rule: 3 First Letters + 001 for Hospitals) */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
-                <span className="flex items-center gap-1">
-                  <span>Account Number</span>
-                  <span className="text-rose-500">*</span>
-                </span>
-                <span className="text-[10px] text-slate-400">
-                  {account.clientType === 'hospital' ? 'First 3 letters + 001' : 'DIS001 / NBTS'}
-                </span>
-              </label>
-              <input
-                type="text"
-                required
-                value={account.accountNumber}
-                onChange={(e) => setAccount({ ...account, accountNumber: e.target.value.toUpperCase() })}
-                placeholder="e.g. ARW001, WAT001, DIS001, NBTS 12"
-                className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 font-mono font-bold text-slate-900"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Region / City */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Region / District
-              </label>
-              <select
-                value={account.region}
-                onChange={(e) => setAccount({ ...account, region: e.target.value as any })}
-                className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 font-medium text-slate-800"
-              >
-                <option value="Midrand">Midrand</option>
-                <option value="Pretoria">Pretoria</option>
-                <option value="Kempton Park">Kempton Park</option>
-              </select>
-            </div>
-
-            {/* Department / Unit */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Department / Ward
-              </label>
-              <input
-                type="text"
-                value={account.department || ''}
-                onChange={(e) => setAccount({ ...account, department: e.target.value })}
-                placeholder="e.g. Theatre Complex, ICU, Sluice Room"
-                className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 text-slate-800"
-              />
-            </div>
-
-            {/* Branch or Store Code (for Dis-Chem or SANBS) */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Branch / Store Code (Optional)
-              </label>
-              <input
-                type="text"
-                value={account.branchOrStoreCode || ''}
-                onChange={(e) => setAccount({ ...account, branchOrStoreCode: e.target.value.toUpperCase() })}
-                placeholder="e.g. S204, S410, A12, NBTS 12"
-                className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 text-slate-800 font-mono"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Contact Person */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-slate-400" />
-                <span>Contact Person</span>
-                <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={account.contactName}
-                onChange={(e) => setAccount({ ...account, contactName: e.target.value })}
-                placeholder="e.g. Sister Annatjie van der Merwe"
-                className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 text-slate-800"
-              />
-            </div>
-
-            {/* Contact Phone */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
-                <Phone className="w-3.5 h-3.5 text-slate-400" />
-                <span>Contact Phone</span>
-                <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="tel"
-                required
-                value={account.contactPhone}
-                onChange={(e) => setAccount({ ...account, contactPhone: e.target.value })}
-                placeholder="e.g. +27 (011) 922-1000"
-                className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 text-slate-800"
-              />
-            </div>
-
-            {/* Contact Email */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
-                <Mail className="w-3.5 h-3.5 text-slate-400" />
-                <span>Contact Email</span>
-              </label>
-              <input
-                type="email"
-                value={account.contactEmail}
-                onChange={(e) => setAccount({ ...account, contactEmail: e.target.value })}
-                placeholder="e.g. orders@arwyp.com"
-                className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 text-slate-800"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Delivery Address */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                <span>Delivery Address (Midrand, Pretoria, or Kempton Park)</span>
-                <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={account.deliveryAddress}
-                onChange={(e) => setAccount({ ...account, deliveryAddress: e.target.value })}
-                placeholder="e.g. 20 Pine Avenue, Kempton Park, 1619"
-                className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 text-slate-800"
-              />
-            </div>
-
-            {/* Purchase Order (PO) */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5 text-slate-400" />
-                <span>Purchase Order / Reference # (Optional)</span>
-              </label>
-              <input
-                type="text"
-                value={account.poNumber || ''}
-                onChange={(e) => setAccount({ ...account, poNumber: e.target.value })}
-                placeholder="e.g. PO-ARW-8921"
-                className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 text-slate-800"
-              />
-            </div>
-          </div>
+          <input
+            type="text"
+            value={account.poNumber || ''}
+            onChange={(e) => setAccount({ ...account, poNumber: e.target.value })}
+            placeholder="e.g. PO-ARW-8921"
+            className="w-full sm:w-64 px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+          />
         </div>
 
         {/* Step 2: Container Quantities & Active Catalog Customization */}

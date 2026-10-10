@@ -2,23 +2,26 @@
 
 import React, { useState, useMemo } from 'react';
 import { useOrders } from '@/context/OrderContext';
-import { OrderCard } from './OrderCard';
+import { EmailInboxRow } from './EmailInboxRow';
 import { ActionOrderModal } from './ActionOrderModal';
 import { OrderDetailsModal } from './OrderDetailsModal';
-import { Order, OrderStatus } from '@/types/order';
-import { CONTAINER_PRODUCTS, SAMPLE_CLIENT_ACCOUNTS } from '@/lib/constants';
+import { FacilityHistoryModal } from './FacilityHistoryModal';
+import { Order } from '@/types/order';
+import { SAMPLE_CLIENT_ACCOUNTS } from '@/lib/constants';
 import { 
   Inbox, 
   Clock, 
   Search, 
-  Filter, 
   Sparkles, 
   Download, 
   Package, 
   RefreshCw, 
   Truck,
+  Calendar as CalendarIcon,
+  Filter,
+  CheckCircle2,
   Building2,
-  CheckCircle2
+  X
 } from 'lucide-react';
 
 export function PlannerDashboard() {
@@ -28,6 +31,8 @@ export function PlannerDashboard() {
     setPlannerTab, 
     actionOrder, 
     createOrder,
+    plannerDateFilter,
+    setPlannerDateFilter,
     selectedOrderForModal, 
     setSelectedOrderForModal 
   } = useOrders();
@@ -35,35 +40,36 @@ export function PlannerDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [regionFilter, setRegionFilter] = useState<'all' | 'Midrand' | 'Pretoria' | 'Kempton Park'>('all');
   const [collectionFilter, setCollectionFilter] = useState<'all' | 'collection-only' | 'delivery-only'>('all');
-  const [sortBy, setSortBy] = useState<'created-desc' | 'delivery-asc' | 'priority'>('created-desc');
-  
-  // Action Modal state
   const [orderToAction, setOrderToAction] = useState<Order | null>(null);
 
-  // Tab counts: Only Inbox and Actioned! (Done tab removed as requested)
+  // Tab counts (Inbox and Actioned only)
   const inboxOrders = useMemo(() => orders.filter((o) => o.status === 'inbox'), [orders]);
   const actionedOrders = useMemo(() => orders.filter((o) => o.status === 'actioned'), [orders]);
 
-  // Total containers in rotation
-  const totalContainers = useMemo(() => {
-    return orders.reduce((sum, ord) => {
-      return sum + Object.values(ord.items).reduce((a, b) => a + (b || 0), 0);
-    }, 0);
+  // Extract all unique creation dates present in the system for calendar date filter
+  const distinctReceivedDates = useMemo(() => {
+    const datesMap: Record<string, number> = {};
+    orders.forEach((ord) => {
+      const d = ord.timestamps.createdAt.split('T')[0];
+      datesMap[d] = (datesMap[d] || 0) + 1;
+    });
+    return Object.entries(datesMap).sort((a, b) => b[0].localeCompare(a[0]));
   }, [orders]);
 
-  // Total full collections in schedule
-  const totalCollections = useMemo(() => {
-    return orders.reduce((sum, ord) => {
-      return sum + (ord.collection.collectionRequested ? (ord.collection.fullContainersCount || 0) : 0);
-    }, 0);
-  }, [orders]);
-
-  // Filter and sort orders for current tab
+  // Filter orders for current tab
   const displayedOrders = useMemo(() => {
     const listForTab = orders.filter((o) => o.status === plannerTab);
 
     return listForTab
       .filter((order) => {
+        // Date Received filter
+        if (plannerDateFilter) {
+          const orderDate = order.timestamps.createdAt.split('T')[0];
+          if (orderDate !== plannerDateFilter) {
+            return false;
+          }
+        }
+
         // Search query
         if (searchQuery.trim()) {
           const q = searchQuery.toLowerCase();
@@ -78,7 +84,7 @@ export function PlannerDashboard() {
           }
         }
 
-        // Region filter (Midrand, Pretoria, Kempton Park)
+        // Region filter
         if (regionFilter !== 'all' && order.account.region !== regionFilter) {
           return false;
         }
@@ -93,23 +99,19 @@ export function PlannerDashboard() {
 
         return true;
       })
-      .sort((a, b) => {
-        if (sortBy === 'created-desc') {
-          return new Date(b.timestamps.createdAt).getTime() - new Date(a.timestamps.createdAt).getTime();
-        }
-        if (sortBy === 'delivery-asc') {
-          return new Date(a.delivery.selectedDate).getTime() - new Date(b.delivery.selectedDate).getTime();
-        }
-        if (sortBy === 'priority') {
-          if (a.priority === 'urgent' && b.priority !== 'urgent') return -1;
-          if (b.priority === 'urgent' && a.priority !== 'urgent') return 1;
-          return new Date(b.timestamps.createdAt).getTime() - new Date(a.timestamps.createdAt).getTime();
-        }
-        return 0;
-      });
-  }, [orders, plannerTab, searchQuery, regionFilter, collectionFilter, sortBy]);
+      .sort((a, b) => new Date(b.timestamps.createdAt).getTime() - new Date(a.timestamps.createdAt).getTime());
+  }, [orders, plannerTab, plannerDateFilter, searchQuery, regionFilter, collectionFilter]);
 
-  // Simulate incoming order for Midrand, Pretoria, Kempton Park, Dis-Chem, or SANBS
+  // Total scheduled items and collection bins
+  const totalItemsCount = useMemo(() => {
+    return orders.reduce((sum, ord) => sum + Object.values(ord.items).reduce((a, b) => a + (b || 0), 0), 0);
+  }, [orders]);
+
+  const totalBinsToCollect = useMemo(() => {
+    return orders.reduce((sum, ord) => sum + (ord.collection.collectionRequested ? (ord.collection.fullContainersCount || 0) : 0), 0);
+  }, [orders]);
+
+  // Simulate an incoming order
   const handleSimulateIncomingOrder = () => {
     const sample = SAMPLE_CLIENT_ACCOUNTS[Math.floor(Math.random() * SAMPLE_CLIENT_ACCOUNTS.length)];
     createOrder({
@@ -119,15 +121,15 @@ export function PlannerDashboard() {
         'daniels-s22': Math.floor(Math.random() * 6) + 1,
         'daniels-s32-plus': Math.floor(Math.random() * 4) + 1,
         'container-45l': Math.floor(Math.random() * 6),
-        'container-90l': Math.floor(Math.random() * 3),
+        'container-90l': Math.floor(Math.random() * 2),
         'plastic-liners': 3,
         'cable-ties-20cm': 2,
       },
       collection: {
         collectionRequested: true,
-        fullContainersCount: Math.floor(Math.random() * 14) + 4,
+        fullContainersCount: Math.floor(Math.random() * 12) + 4,
         wasteStream: 'Sharps (Yellow)',
-        pickupBayNotes: 'Staged at sluice room / receiving dock',
+        pickupBayNotes: 'Theatre dirty utility holding room',
         complianceCertified: true,
       },
       delivery: {
@@ -140,7 +142,7 @@ export function PlannerDashboard() {
   };
 
   const handleExportCSV = () => {
-    const headers = ['Order ID', 'Status', 'Account No', 'Branch / Store Code', 'Facility Name', 'Region', 'Delivery Address', 'Target Date', 'Items Count', 'Full Bins Collection', 'Created At'];
+    const headers = ['Order ID', 'Status', 'Account No', 'Branch / Store', 'Facility Name', 'Region', 'Delivery Address', 'Target Date', 'Items', 'Collection Bins', 'Received Timestamp'];
     const rows = orders.map((o) => {
       const itemsCount = Object.values(o.items).reduce((a, b) => a + (b || 0), 0);
       const colUnits = o.collection.collectionRequested ? o.collection.fullContainersCount || 0 : 0;
@@ -163,36 +165,35 @@ export function PlannerDashboard() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `rucs-orders-${plannerTab}-manifest.csv`);
+    link.setAttribute('download', `rucs-planner-${plannerTab}-manifest.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
   return (
-    <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6">
-      {/* Top Operations Header & Stats */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2">
+    <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-5">
+      {/* Top Operations Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-              Planner Operations Dashboard
+              Planner Operations Hub
             </h1>
             <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-              Gauteng Fleet Hub
+              Email-Style Inbox
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Dispatch triage for Midrand, Pretoria, and Kempton Park: Hospitals, Dis-Chem branches, and SANBS blood banks.
+            Incoming hospital consignments from Midrand, Pretoria, and Kempton Park. Click any row to expand details, or click a hospital name to view its order history.
           </p>
         </div>
 
-        {/* Action Controls */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={handleSimulateIncomingOrder}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl transition-all shadow-2xs"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl transition-all shadow-2xs"
           >
             <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
             <span>Simulate Incoming Order</span>
@@ -204,228 +205,272 @@ export function PlannerDashboard() {
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-all shadow-2xs"
           >
             <Download className="w-3.5 h-3.5 text-slate-500" />
-            <span className="hidden sm:inline">Export Manifest</span>
+            <span className="hidden sm:inline">Export CSV</span>
           </button>
         </div>
       </div>
 
-      {/* KPI Metric Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Inbox KPI */}
+      {/* KPI Overview Strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div 
           onClick={() => setPlannerTab('inbox')}
-          className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+          className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
             plannerTab === 'inbox'
-              ? 'bg-amber-50/60 border-amber-300 shadow-sm ring-1 ring-amber-300'
+              ? 'bg-amber-50/70 border-amber-300 ring-1 ring-amber-300'
               : 'bg-white border-slate-200 hover:border-slate-300'
           }`}
         >
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Inbox</span>
-            <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center">
-              <Inbox className="w-4 h-4" />
-            </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-500 uppercase">Inbox (New)</span>
+            <Inbox className="w-4 h-4 text-amber-600" />
           </div>
-          <div className="flex items-baseline gap-2">
+          <div className="flex items-baseline gap-2 mt-1">
             <span className="text-2xl font-bold text-slate-900">{inboxOrders.length}</span>
-            <span className="text-xs text-amber-700 font-semibold">Awaiting Dispatch</span>
+            <span className="text-xs text-amber-800 font-semibold">orders</span>
           </div>
         </div>
 
-        {/* Actioned KPI */}
         <div 
           onClick={() => setPlannerTab('actioned')}
-          className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+          className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
             plannerTab === 'actioned'
-              ? 'bg-indigo-50/60 border-indigo-300 shadow-sm ring-1 ring-indigo-300'
+              ? 'bg-indigo-50/70 border-indigo-300 ring-1 ring-indigo-300'
               : 'bg-white border-slate-200 hover:border-slate-300'
           }`}
         >
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Actioned</span>
-            <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center">
-              <Truck className="w-4 h-4" />
-            </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-500 uppercase">Actioned</span>
+            <Truck className="w-4 h-4 text-indigo-600" />
           </div>
-          <div className="flex items-baseline gap-2">
+          <div className="flex items-baseline gap-2 mt-1">
             <span className="text-2xl font-bold text-slate-900">{actionedOrders.length}</span>
-            <span className="text-xs text-indigo-700 font-semibold">Dispatched / In Route</span>
+            <span className="text-xs text-indigo-800 font-semibold">dispatched</span>
           </div>
         </div>
 
-        {/* Total Units KPI */}
-        <div className="p-4 rounded-2xl border border-slate-200 bg-white">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Scheduled Items</span>
-            <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center">
-              <Package className="w-4 h-4" />
-            </div>
+        <div className="p-3.5 rounded-xl border border-slate-200 bg-white">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-500 uppercase">Total Items</span>
+            <Package className="w-4 h-4 text-slate-500" />
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-slate-900">{totalContainers}</span>
-            <span className="text-xs text-slate-500 font-medium">units</span>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-2xl font-bold text-slate-900">{totalItemsCount}</span>
+            <span className="text-xs text-slate-500">units</span>
           </div>
         </div>
 
-        {/* Total Bins Collection KPI */}
-        <div className="p-4 rounded-2xl border border-slate-200 bg-white">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Bins to Collect</span>
-            <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center">
-              <RefreshCw className="w-4 h-4" />
-            </div>
+        <div className="p-3.5 rounded-xl border border-slate-200 bg-white">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-500 uppercase">Bins To Collect</span>
+            <RefreshCw className="w-4 h-4 text-amber-600" />
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-amber-900">{totalCollections}</span>
-            <span className="text-xs text-slate-500 font-medium">full bins</span>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-2xl font-bold text-amber-900">{totalBinsToCollect}</span>
+            <span className="text-xs text-slate-500">full bins</span>
           </div>
         </div>
       </div>
 
-      {/* Main Tabs Navigation: Strictly Inbox and Actioned (Done is removed!) */}
-      <div className="border-b border-slate-200">
-        <nav className="flex space-x-8" aria-label="Planner Tabs">
-          <button
-            type="button"
-            onClick={() => setPlannerTab('inbox')}
-            className={`py-3 px-1 border-b-2 font-bold text-sm flex items-center gap-2 transition-all ${
-              plannerTab === 'inbox'
-                ? 'border-amber-500 text-amber-700'
-                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-            }`}
-          >
-            <Inbox className="w-4 h-4" />
-            <span>Inbox</span>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-              plannerTab === 'inbox'
-                ? 'bg-amber-100 text-amber-800'
-                : 'bg-slate-100 text-slate-600'
-            }`}>
-              {inboxOrders.length}
+      {/* Calendar Received-Date Filter Bar (Date Selector for Planner) */}
+      <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs space-y-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <CalendarIcon className="w-4 h-4 text-emerald-600" />
+            <span className="text-xs font-bold text-slate-800">
+              Filter by Order Received Date:
             </span>
-          </button>
+            {plannerDateFilter ? (
+              <span className="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 flex items-center gap-1">
+                <span>Selected: {plannerDateFilter}</span>
+                <button
+                  type="button"
+                  onClick={() => setPlannerDateFilter(null)}
+                  className="hover:text-black ml-1"
+                  title="Clear date filter"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ) : (
+              <span className="text-xs text-slate-500 font-medium">Viewing all dates</span>
+            )}
+          </div>
 
-          <button
-            type="button"
-            onClick={() => setPlannerTab('actioned')}
-            className={`py-3 px-1 border-b-2 font-bold text-sm flex items-center gap-2 transition-all ${
-              plannerTab === 'actioned'
-                ? 'border-indigo-600 text-indigo-700'
-                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-            }`}
-          >
-            <Truck className="w-4 h-4" />
-            <span>Actioned</span>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-              plannerTab === 'actioned'
-                ? 'bg-indigo-100 text-indigo-800'
-                : 'bg-slate-100 text-slate-600'
-            }`}>
-              {actionedOrders.length}
-            </span>
-          </button>
-        </nav>
-      </div>
-
-      {/* Filters and Search Toolbar */}
-      <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs flex flex-col lg:flex-row items-center justify-between gap-3 text-xs">
-        {/* Search */}
-        <div className="relative w-full lg:w-80">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search hospital, ARW001, S204, NBTS, address..."
-            className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 text-xs"
-          />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPlannerDateFilter(null)}
+              className={`text-xs px-2.5 py-1 rounded-lg border font-semibold transition-colors ${
+                !plannerDateFilter
+                  ? 'bg-slate-900 text-white border-slate-900'
+                  : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              All Dates ({orders.length})
+            </button>
+          </div>
         </div>
 
-        {/* Region, Collection, and Sort Filters */}
-        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-end">
-          {/* Region filter */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-500 font-medium">Region:</span>
+        {/* Quick Date Chips */}
+        <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100">
+          {distinctReceivedDates.map(([dateStr, count]) => {
+            const isSelected = plannerDateFilter === dateStr;
+            const isToday = dateStr === '2026-10-10';
+            return (
+              <button
+                key={dateStr}
+                type="button"
+                onClick={() => setPlannerDateFilter(isSelected ? null : dateStr)}
+                className={`text-xs px-2.5 py-1 rounded-lg border transition-all flex items-center gap-1.5 font-medium ${
+                  isSelected
+                    ? 'bg-emerald-600 text-white border-emerald-600 font-bold shadow-2xs'
+                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                }`}
+              >
+                <span>{isToday ? 'Today (Oct 10)' : dateStr}</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  isSelected ? 'bg-white/25 text-white' : 'bg-slate-200 text-slate-700'
+                }`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Main Mailbox Container */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        {/* Inbox / Actioned Tabs & Search / Filter Toolbar */}
+        <div className="p-4 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-50/50">
+          {/* Tab Selector */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPlannerTab('inbox')}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                plannerTab === 'inbox'
+                  ? 'bg-amber-500 text-white shadow-xs'
+                  : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
+              }`}
+            >
+              <Inbox className="w-3.5 h-3.5" />
+              <span>Inbox</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                plannerTab === 'inbox' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+              }`}>
+                {inboxOrders.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPlannerTab('actioned')}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                plannerTab === 'actioned'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
+              }`}
+            >
+              <Truck className="w-3.5 h-3.5" />
+              <span>Actioned</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                plannerTab === 'actioned' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+              }`}>
+                {actionedOrders.length}
+              </span>
+            </button>
+          </div>
+
+          {/* Search & Region Filters */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative w-full sm:w-64">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search hospital, account, address..."
+                className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+              />
+            </div>
+
             <select
               value={regionFilter}
               onChange={(e) => setRegionFilter(e.target.value as any)}
-              className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none font-medium"
+              className="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 font-medium"
             >
               <option value="all">All Regions</option>
               <option value="Midrand">Midrand</option>
               <option value="Pretoria">Pretoria</option>
               <option value="Kempton Park">Kempton Park</option>
             </select>
-          </div>
 
-          {/* Collection Filter */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-500 font-medium">Filter:</span>
             <select
               value={collectionFilter}
               onChange={(e) => setCollectionFilter(e.target.value as any)}
-              className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none font-medium"
+              className="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 font-medium"
             >
-              <option value="all">All Orders</option>
-              <option value="collection-only">Collection Required</option>
+              <option value="all">All Collections</option>
+              <option value="collection-only">Collection Only</option>
               <option value="delivery-only">Delivery Only</option>
             </select>
           </div>
+        </div>
 
-          {/* Sort By */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-500 font-medium">Sort:</span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none font-medium"
-            >
-              <option value="created-desc">Timestamp (Newest First)</option>
-              <option value="delivery-asc">Delivery Date (Earliest)</option>
-              <option value="priority">Priority (Urgent First)</option>
-            </select>
+        {/* Column Headers for Email Line View */}
+        <div className="hidden sm:flex items-center justify-between py-2 px-4 bg-slate-100/80 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+          <div className="flex items-center gap-2.5 shrink-0 w-28">
+            <span>Order ID</span>
+          </div>
+          <div className="w-48 sm:w-60 shrink-0">
+            <span>Hospital / Client & Account</span>
+          </div>
+          <div className="flex-1 hidden md:block">
+            <span>Consignment Summary</span>
+          </div>
+          <div className="hidden lg:block shrink-0 w-32 text-center">
+            <span>Collection</span>
+          </div>
+          <div className="hidden sm:block shrink-0 w-28 text-right">
+            <span>Delivery Date</span>
+          </div>
+          <div className="shrink-0 w-20 text-right">
+            <span>Received</span>
+          </div>
+          <div className="shrink-0 w-16 text-right">
+            <span>Status</span>
           </div>
         </div>
+
+        {/* Email Inbox Rows */}
+        {displayedOrders.length === 0 ? (
+          <div className="p-12 text-center space-y-2 bg-white">
+            <Inbox className="w-10 h-10 text-slate-300 mx-auto" />
+            <h4 className="text-sm font-bold text-slate-800">
+              No orders found in {plannerTab.toUpperCase()}
+            </h4>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto">
+              {plannerDateFilter
+                ? `No orders received on ${plannerDateFilter}. Try selecting "All Dates".`
+                : searchQuery
+                ? `No matches for "${searchQuery}".`
+                : 'All orders in this queue are cleared.'}
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {displayedOrders.map((order) => (
+              <EmailInboxRow
+                key={order.id}
+                order={order}
+                onOpenActionModal={setOrderToAction}
+                onOpenDetailsModal={setSelectedOrderForModal}
+              />
+            ))}
+          </div>
+        )}
       </div>
-
-      {/* Orders Grid / Cards List */}
-      {displayedOrders.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3">
-          <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
-            <Inbox className="w-6 h-6" />
-          </div>
-          <h3 className="text-base font-bold text-slate-800">
-            No orders in the {plannerTab.toUpperCase()} queue
-          </h3>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto">
-            {searchQuery
-              ? `No matching results found for "${searchQuery}".`
-              : plannerTab === 'inbox'
-              ? 'All new incoming hospital orders have been actioned.'
-              : 'No orders are currently in active dispatch.'}
-          </p>
-          {plannerTab === 'inbox' && (
-            <button
-              type="button"
-              onClick={handleSimulateIncomingOrder}
-              className="mt-2 text-xs font-bold text-emerald-800 bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-200 hover:bg-emerald-100 transition-colors"
-            >
-              Simulate an incoming order now
-            </button>
-          )}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          {displayedOrders.map((order) => (
-            <OrderCard
-              key={order.id}
-              order={order}
-              onOpenActionModal={setOrderToAction}
-              onOpenDetailsModal={setSelectedOrderForModal}
-            />
-          ))}
-        </div>
-      )}
 
       {/* Action Order Modal */}
       <ActionOrderModal
@@ -440,6 +485,9 @@ export function PlannerDashboard() {
         order={selectedOrderForModal}
         onClose={() => setSelectedOrderForModal(null)}
       />
+
+      {/* Facility Order History Modal */}
+      <FacilityHistoryModal />
     </div>
   );
 }

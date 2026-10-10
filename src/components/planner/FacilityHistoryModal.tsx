@@ -133,7 +133,7 @@ export function FacilityHistoryModal() {
                       {order.collection.collectionRequested && (
                         <span className="text-amber-800 font-semibold flex items-center gap-1">
                           <RefreshCw className="w-3 h-3 text-amber-600" />
-                          <span>Collected: {order.collection.fullContainersCount} Full Bins ({order.collection.wasteStream})</span>
+                          <span>Collection: Full Containers Pickup ({order.collection.wasteStream || 'Clinical Waste'})</span>
                         </span>
                       )}
                     </div>

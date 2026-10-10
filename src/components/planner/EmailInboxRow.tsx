@@ -116,7 +116,7 @@ export function EmailInboxRow({ order, onOpenActionModal, onOpenDetailsModal }: 
           {order.collection.collectionRequested ? (
             <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full">
               <RefreshCw className="w-2.5 h-2.5 text-amber-600" />
-              <span>{order.collection.fullContainersCount} Full Bins</span>
+              <span>Waste Collection</span>
             </span>
           ) : (
             <span className="text-[10px] text-slate-400">Delivery Only</span>
@@ -253,11 +253,11 @@ export function EmailInboxRow({ order, onOpenActionModal, onOpenDetailsModal }: 
                   <span className="text-slate-400 block text-[10px] font-bold uppercase">Waste Collection Request:</span>
                   {order.collection.collectionRequested ? (
                     <div>
-                      <p className="font-bold text-amber-900">{order.collection.fullContainersCount} Full Bins Scheduled</p>
-                      <p className="text-amber-800 text-[11px]">{order.collection.wasteStream} • Staging: {order.collection.pickupBayNotes || 'Designated sluice'}</p>
+                      <p className="font-bold text-amber-900">Full Containers Collection Scheduled</p>
+                      <p className="text-amber-800 text-[11px]">{order.collection.wasteStream || 'Sharps & Clinical Waste'} • Staging: {order.collection.pickupBayNotes || 'Designated sluice'}</p>
                     </div>
                   ) : (
-                    <p className="text-slate-500">Delivery Only (0 bins to collect)</p>
+                    <p className="text-slate-500">Delivery Only (No collection requested)</p>
                   )}
                 </div>
               </div>

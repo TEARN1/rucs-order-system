@@ -13,12 +13,10 @@ import {
   Clock, 
   Search, 
   Sparkles, 
-  Download, 
   Package, 
   RefreshCw, 
   Truck,
   Calendar as CalendarIcon,
-  Filter,
   CheckCircle2,
   Building2,
   X
@@ -38,8 +36,6 @@ export function PlannerDashboard() {
   } = useOrders();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [regionFilter, setRegionFilter] = useState<'all' | 'Midrand' | 'Pretoria' | 'Kempton Park'>('all');
-  const [collectionFilter, setCollectionFilter] = useState<'all' | 'collection-only' | 'delivery-only'>('all');
   const [orderToAction, setOrderToAction] = useState<Order | null>(null);
 
   // Tab counts (Inbox and Actioned only)
@@ -84,31 +80,18 @@ export function PlannerDashboard() {
           }
         }
 
-        // Region filter
-        if (regionFilter !== 'all' && order.account.region !== regionFilter) {
-          return false;
-        }
-
-        // Collection filter
-        if (collectionFilter === 'collection-only' && !order.collection.collectionRequested) {
-          return false;
-        }
-        if (collectionFilter === 'delivery-only' && order.collection.collectionRequested) {
-          return false;
-        }
-
         return true;
       })
       .sort((a, b) => new Date(b.timestamps.createdAt).getTime() - new Date(a.timestamps.createdAt).getTime());
-  }, [orders, plannerTab, plannerDateFilter, searchQuery, regionFilter, collectionFilter]);
+  }, [orders, plannerTab, plannerDateFilter, searchQuery]);
 
-  // Total scheduled items and collection bins
+  // Total scheduled items and collection requests
   const totalItemsCount = useMemo(() => {
     return orders.reduce((sum, ord) => sum + Object.values(ord.items).reduce((a, b) => a + (b || 0), 0), 0);
   }, [orders]);
 
-  const totalBinsToCollect = useMemo(() => {
-    return orders.reduce((sum, ord) => sum + (ord.collection.collectionRequested ? (ord.collection.fullContainersCount || 0) : 0), 0);
+  const totalCollectionsRequested = useMemo(() => {
+    return orders.filter((ord) => ord.collection.collectionRequested).length;
   }, [orders]);
 
   // Simulate an incoming order
@@ -141,36 +124,6 @@ export function PlannerDashboard() {
     setPlannerTab('inbox');
   };
 
-  const handleExportCSV = () => {
-    const headers = ['Order ID', 'Status', 'Account No', 'Branch / Store', 'Facility Name', 'Region', 'Delivery Address', 'Target Date', 'Items', 'Collection Bins', 'Received Timestamp'];
-    const rows = orders.map((o) => {
-      const itemsCount = Object.values(o.items).reduce((a, b) => a + (b || 0), 0);
-      const colUnits = o.collection.collectionRequested ? o.collection.fullContainersCount || 0 : 0;
-      return [
-        o.id,
-        o.status,
-        o.account.accountNumber,
-        `"${o.account.branchOrStoreCode || ''}"`,
-        `"${o.account.facilityName}"`,
-        `"${o.account.region}"`,
-        `"${o.account.deliveryAddress}"`,
-        o.delivery.selectedDate,
-        itemsCount,
-        colUnits,
-        `"${o.timestamps.createdAt}"`,
-      ].join(',');
-    });
-
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `rucs-planner-${plannerTab}-manifest.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   return (
     <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-5">
       {/* Top Operations Header */}
@@ -193,19 +146,10 @@ export function PlannerDashboard() {
           <button
             type="button"
             onClick={handleSimulateIncomingOrder}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl transition-all shadow-2xs"
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl transition-all shadow-2xs"
           >
             <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
             <span>Simulate Incoming Order</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleExportCSV}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-all shadow-2xs"
-          >
-            <Download className="w-3.5 h-3.5 text-slate-500" />
-            <span className="hidden sm:inline">Export CSV</span>
           </button>
         </div>
       </div>
@@ -261,12 +205,12 @@ export function PlannerDashboard() {
 
         <div className="p-3.5 rounded-xl border border-slate-200 bg-white">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase">Bins To Collect</span>
+            <span className="text-[11px] font-bold text-slate-500 uppercase">Collection Requests</span>
             <RefreshCw className="w-4 h-4 text-amber-600" />
           </div>
           <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-bold text-amber-900">{totalBinsToCollect}</span>
-            <span className="text-xs text-slate-500">full bins</span>
+            <span className="text-2xl font-bold text-amber-900">{totalCollectionsRequested}</span>
+            <span className="text-xs text-slate-500">scheduled</span>
           </div>
         </div>
       </div>
@@ -382,9 +326,9 @@ export function PlannerDashboard() {
             </button>
           </div>
 
-          {/* Search & Region Filters */}
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative w-full sm:w-64">
+          {/* Search Box */}
+          <div className="flex items-center gap-2">
+            <div className="relative w-full sm:w-72">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
               <input
                 type="text"
@@ -394,27 +338,6 @@ export function PlannerDashboard() {
                 className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
               />
             </div>
-
-            <select
-              value={regionFilter}
-              onChange={(e) => setRegionFilter(e.target.value as any)}
-              className="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 font-medium"
-            >
-              <option value="all">All Regions</option>
-              <option value="Midrand">Midrand</option>
-              <option value="Pretoria">Pretoria</option>
-              <option value="Kempton Park">Kempton Park</option>
-            </select>
-
-            <select
-              value={collectionFilter}
-              onChange={(e) => setCollectionFilter(e.target.value as any)}
-              className="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 font-medium"
-            >
-              <option value="all">All Collections</option>
-              <option value="collection-only">Collection Only</option>
-              <option value="delivery-only">Delivery Only</option>
-            </select>
           </div>
         </div>
 

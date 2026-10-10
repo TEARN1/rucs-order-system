@@ -124,7 +124,6 @@ function MainApp() {
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
             <span className="font-semibold text-slate-700">RUCS Clinical Waste Logistics</span>
-            <span>• Midrand, Pretoria & Kempton Park Gauteng Fleet</span>
           </div>
 
           <div className="flex items-center gap-4 text-slate-400">

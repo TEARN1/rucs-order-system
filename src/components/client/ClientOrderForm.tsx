@@ -52,18 +52,17 @@ export function ClientOrderForm({ onOpenSettings }: ClientOrderFormProps) {
     'cable-ties-20cm': 2,
   });
 
-  // Collection state
+  // Collection state (simple toggle without required count)
   const [collection, setCollection] = useState<CollectionDetails>({
     collectionRequested: true,
-    fullContainersCount: 12,
     wasteStream: 'Sharps (Yellow)',
     pickupBayNotes: 'Theatre dirty utility / sluice holding bay',
     complianceCertified: true,
   });
 
-  // Delivery calendar state (earliest selectable is 2026-10-13 due to 48h lead time)
+  // Delivery calendar state (earliest eligible available day is Thursday 2026-10-15)
   const [delivery, setDelivery] = useState<DeliveryBooking>({
-    selectedDate: '2026-10-14',
+    selectedDate: '2026-10-15',
     specialDeliveryInstructions: '',
   });
 
@@ -217,10 +216,10 @@ export function ClientOrderForm({ onOpenSettings }: ClientOrderFormProps) {
               {submittedOrder.collection.collectionRequested && (
                 <div className="mt-3 pt-3 border-t border-slate-200/80 flex items-center justify-between text-xs text-amber-800 bg-amber-50/80 p-2.5 rounded-lg border border-amber-200">
                   <span className="font-semibold">
-                    Collection Scheduled: {submittedOrder.collection.fullContainersCount} Full Bins
+                    Waste Collection Scheduled: Full Containers Pickup
                   </span>
                   <span className="text-[11px] font-medium text-amber-900">
-                    {submittedOrder.collection.wasteStream}
+                    {submittedOrder.collection.wasteStream || 'Sharps / Clinical'}
                   </span>
                 </div>
               )}
@@ -308,7 +307,10 @@ export function ClientOrderForm({ onOpenSettings }: ClientOrderFormProps) {
 
       {/* Main Order Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Step 1: Purchase Order Number (Optional) */}
+        {/* Top Manual Section: Request Collection / Waste Pickup */}
+        <CollectionSection collection={collection} onChange={setCollection} />
+
+        {/* Purchase Order Number (Optional) */}
         <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4 text-slate-400" />
@@ -323,15 +325,12 @@ export function ClientOrderForm({ onOpenSettings }: ClientOrderFormProps) {
           />
         </div>
 
-        {/* Step 2: Container Quantities & Active Catalog Customization */}
+        {/* Container Quantities & Active Catalog Customization */}
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
           <ProductSelector quantities={quantities} onChange={setQuantities} />
         </div>
 
-        {/* Step 3: Collection Status */}
-        <CollectionSection collection={collection} onChange={setCollection} />
-
-        {/* Step 4: Booking Calendar (48h lead limit enforced) */}
+        {/* Booking Calendar (Enforces Booked Days Mon/Wed/Fri, Banned Days Tue/Sat, 48h limit) */}
         <BookingCalendar delivery={delivery} onChange={setDelivery} />
 
         {/* Priority & Submit Controls */}

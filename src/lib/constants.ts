@@ -78,6 +78,11 @@ export const CONTAINER_PRODUCTS: ContainerProduct[] = [
   },
 ];
 
+export const DEFAULT_FACILITY_SCHEDULE = {
+  bookedDays: [1, 3, 5], // Monday, Wednesday, Friday: Booked Days
+  bannedDays: [2, 6],    // Tuesday, Saturday: Banned Days
+};
+
 // Sample real hospitals in Midrand, Pretoria, and Kempton Park + Dis-Chem + SANBS
 export const SAMPLE_CLIENT_ACCOUNTS: ClientAccountDetails[] = [
   {
@@ -91,6 +96,10 @@ export const SAMPLE_CLIENT_ACCOUNTS: ClientAccountDetails[] = [
     contactEmail: 'orders@arwyp.com',
     deliveryAddress: '20 Pine Avenue, Kempton Park, 1619',
     poNumber: 'PO-ARW-8921',
+    scheduleConfig: {
+      bookedDays: [1, 3, 5], // Mon, Wed, Fri booked
+      bannedDays: [2, 6],    // Tue, Sat banned
+    },
   },
   {
     accountNumber: 'WAT001',
@@ -103,6 +112,10 @@ export const SAMPLE_CLIENT_ACCOUNTS: ClientAccountDetails[] = [
     contactEmail: 'n.dlamini@netcare.co.za',
     deliveryAddress: 'Corner Magwa Crescent & Mac Mac Avenue, Waterfall City, Midrand, 1682',
     poNumber: 'PO-WAT-1049',
+    scheduleConfig: {
+      bookedDays: [1, 3, 5], // Mon, Wed, Fri booked
+      bannedDays: [2, 6],    // Tue, Sat banned
+    },
   },
   {
     accountNumber: 'CAR001',
@@ -115,6 +128,10 @@ export const SAMPLE_CLIENT_ACCOUNTS: ClientAccountDetails[] = [
     contactEmail: 'orders.carstenhof@lifehealthcare.co.za',
     deliveryAddress: '21 Dane Road, Glen Austin, Midrand, 1685',
     poNumber: 'PO-CAR-7712',
+    scheduleConfig: {
+      bookedDays: [1, 3, 5],
+      bannedDays: [2, 6],
+    },
   },
   {
     accountNumber: 'STE001',
@@ -127,6 +144,10 @@ export const SAMPLE_CLIENT_ACCOUNTS: ClientAccountDetails[] = [
     contactEmail: 'logistics@stevebikohospital.gov.za',
     deliveryAddress: 'Voortrekker Road & Malan Street, Capital Park, Pretoria, 0084',
     poNumber: 'PO-STE-5520',
+    scheduleConfig: {
+      bookedDays: [1, 3, 5],
+      bannedDays: [2, 6],
+    },
   },
   {
     accountNumber: 'WIL001',
@@ -139,6 +160,10 @@ export const SAMPLE_CLIENT_ACCOUNTS: ClientAccountDetails[] = [
     contactEmail: 'orders.wilgers@lifehealthcare.co.za',
     deliveryAddress: 'Denneboom Road, Wilgers, Pretoria, 0184',
     poNumber: 'PO-WIL-6631',
+    scheduleConfig: {
+      bookedDays: [1, 3, 5],
+      bannedDays: [2, 6],
+    },
   },
   {
     accountNumber: 'ZUI001',
@@ -151,9 +176,13 @@ export const SAMPLE_CLIENT_ACCOUNTS: ClientAccountDetails[] = [
     contactEmail: 'orders@zah.co.za',
     deliveryAddress: '293 Bourke Street, Muckleneuk, Pretoria, 0002',
     poNumber: 'PO-ZUI-3312',
+    scheduleConfig: {
+      bookedDays: [1, 3, 5],
+      bannedDays: [2, 6],
+    },
   },
   {
-    accountNumber: 'DIS001',
+    accountNumber: 'DISC001',
     clientType: 'dischem',
     facilityName: 'Dis-Chem Pharmacy & Clinic',
     branchOrStoreCode: 'S204',
@@ -163,10 +192,14 @@ export const SAMPLE_CLIENT_ACCOUNTS: ClientAccountDetails[] = [
     contactPhone: '+27 (011) 805-0120',
     contactEmail: 'clinic.boulders@dischem.co.za',
     deliveryAddress: 'Shop 42, Boulders Shopping Centre, Old Pretoria Rd, Midrand, 1685',
-    poNumber: 'PO-DIS-S204-99',
+    poNumber: 'PO-DISC-S204-99',
+    scheduleConfig: {
+      bookedDays: [1, 3, 5],
+      bannedDays: [2, 6],
+    },
   },
   {
-    accountNumber: 'DIS001',
+    accountNumber: 'DISC001',
     clientType: 'dischem',
     facilityName: 'Dis-Chem Pharmacy & Clinic',
     branchOrStoreCode: 'S410',
@@ -176,7 +209,11 @@ export const SAMPLE_CLIENT_ACCOUNTS: ClientAccountDetails[] = [
     contactPhone: '+27 (011) 394-1400',
     contactEmail: 'clinic.festival@dischem.co.za',
     deliveryAddress: 'Festival Mall, CR Swart Dr & Kelvin St, Kempton Park, 1619',
-    poNumber: 'PO-DIS-S410-44',
+    poNumber: 'PO-DISC-S410-44',
+    scheduleConfig: {
+      bookedDays: [1, 3, 5],
+      bannedDays: [2, 6],
+    },
   },
   {
     accountNumber: 'NBTS 12',
@@ -190,6 +227,10 @@ export const SAMPLE_CLIENT_ACCOUNTS: ClientAccountDetails[] = [
     contactEmail: 'logistics.pta@sanbs.org.za',
     deliveryAddress: '42 Francis Baard Street, Pretoria Central, 0001',
     poNumber: 'PO-SANBS-12-88',
+    scheduleConfig: {
+      bookedDays: [1, 3, 5],
+      bannedDays: [2, 6],
+    },
   },
   {
     accountNumber: 'NBTS 14',
@@ -203,6 +244,10 @@ export const SAMPLE_CLIENT_ACCOUNTS: ClientAccountDetails[] = [
     contactEmail: 'midrand.dispatch@sanbs.org.za',
     deliveryAddress: 'Waterfall Commercial District, 14 K101 Road, Midrand, 1682',
     poNumber: 'PO-SANBS-14-102',
+    scheduleConfig: {
+      bookedDays: [1, 3, 5],
+      bannedDays: [2, 6],
+    },
   },
 ];
 
@@ -271,7 +316,7 @@ export const INITIAL_SEED_ORDERS: Order[] = [
     id: 'ORD-2026-8806',
     status: 'inbox',
     account: {
-      accountNumber: 'DIS001',
+      accountNumber: 'DISC001',
       clientType: 'dischem',
       facilityName: 'Dis-Chem Pharmacy & Clinic',
       branchOrStoreCode: 'S204',
@@ -281,7 +326,7 @@ export const INITIAL_SEED_ORDERS: Order[] = [
       contactPhone: '+27 (011) 805-0120',
       contactEmail: 'clinic.boulders@dischem.co.za',
       deliveryAddress: 'Shop 42, Boulders Shopping Centre, Old Pretoria Rd, Midrand, 1685',
-      poNumber: 'PO-DIS-S204-99',
+      poNumber: 'PO-DISC-S204-99',
     },
     items: {
       'daniels-s14': 6,
@@ -567,7 +612,7 @@ export const INITIAL_SEED_ORDERS: Order[] = [
     id: 'ORD-2026-8744',
     status: 'actioned',
     account: {
-      accountNumber: 'DIS001',
+      accountNumber: 'DISC001',
       clientType: 'dischem',
       facilityName: 'Dis-Chem Pharmacy & Clinic',
       branchOrStoreCode: 'S410',

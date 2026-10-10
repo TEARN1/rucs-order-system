@@ -183,7 +183,7 @@ export function OrderDetailsModal({ order, onClose }: OrderDetailsModalProps) {
               <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-xl text-xs space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-amber-900 text-sm">
-                    Collection Scheduled: {order.collection.fullContainersCount} Full Bins
+                    Collection Scheduled: Full Waste Containers Pickup
                   </span>
                   <span className="bg-amber-200/70 text-amber-900 px-2.5 py-0.5 rounded-full font-bold text-[11px]">
                     Stream: {order.collection.wasteStream}

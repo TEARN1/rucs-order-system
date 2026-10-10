@@ -23,11 +23,16 @@ export type OrderQuantities = Partial<Record<ContainerId, number>>;
 
 export type ClientType = 'hospital' | 'dischem' | 'sanbs' | 'other';
 
+export interface FacilityScheduleConfig {
+  bookedDays: number[]; // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+  bannedDays: number[];
+}
+
 export interface ClientAccountDetails {
-  accountNumber: string; // e.g., ARW001, CAR001, WAT001, DIS001, NBTS-12
+  accountNumber: string; // e.g., ARW001, CAR001, WAT001, DISC001, NBTS 12
   clientType: ClientType;
   facilityName: string; // e.g., Arwyp Medical Centre, Netcare Waterfall City, Dis-Chem
-  branchOrStoreCode?: string; // e.g., S204, S810, A01, NBTS 12
+  branchOrStoreCode?: string; // e.g., S204, S410, A12, NBTS 12
   region: 'Midrand' | 'Pretoria' | 'Kempton Park';
   department?: string;
   contactName: string;
@@ -35,6 +40,7 @@ export interface ClientAccountDetails {
   contactEmail: string;
   deliveryAddress: string;
   poNumber?: string;
+  scheduleConfig?: FacilityScheduleConfig;
 }
 
 export interface CollectionDetails {
